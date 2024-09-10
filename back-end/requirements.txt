@@ -1,4 +1,13 @@
+# pip install -r requirements.txt
+
 fastapi
 uvicorn
 torch
 numpy
+pandas
+transformers
+yfinance
+python-dotenv
+textblob
+requests
+stweet
