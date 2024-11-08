@@ -11,3 +11,4 @@ python-dotenv
 textblob
 requests
 stweet
+scikit-learn
