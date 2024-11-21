@@ -1,18 +1,17 @@
-// src/components/Sidebar.jsx
-import React from 'react';
+// src/components/Sidebar.js
+import React from "react";
+import "./Sidebar.css";
 
-function Sidebar({ indices, onSelectIndex }) {
+function Sidebar() {
   return (
-    <aside>
-      <h2>Indices</h2>
+    <div className="sidebar">
+      <h2>INDICES</h2>
       <ul>
-        {indices.map((index) => (
-          <li key={index} onClick={() => onSelectIndex(index)}>
-            {index}
-          </li>
-        ))}
+        <li>BANK NIFTY</li>
+        <li>NIFTY 50</li>
+        <li>SENSEX</li>
       </ul>
-    </aside>
+    </div>
   );
 }
 

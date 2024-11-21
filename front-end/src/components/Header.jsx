@@ -1,16 +1,15 @@
-// src/components/Header.jsx
-import React from 'react';
+// src/components/Header.js
+import React from "react";
+import "./Header.css";
 
 function Header() {
   return (
-    <header>
-      <h1>SPORS</h1>
-      <nav>
-        <ul>
-          <li>Home</li>
-          <li>Portfolio</li>
-          <li>Settings</li>
-        </ul>
+    <header className="header">
+      <div className="logo">SPORS</div>
+      <nav className="nav-links">
+        <a href="#">Dashboard</a>
+        <a href="#">History</a>
+        <a href="#">Settings</a>
       </nav>
     </header>
   );

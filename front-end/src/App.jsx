@@ -1,19 +1,17 @@
-// src/App.jsx
-import React, { useState } from 'react';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
+// src/App.js
+import React from "react";
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
+import MainContent from "./components/MainContent";
+import "./App.css";
 
 function App() {
-  const [selectedIndex, setSelectedIndex] = useState(null);
-  const indices = ['Nifty 50', 'Bank Nifty', 'Sensex']; // Sample indices
-
   return (
-    <div className="app">
+    <div className="app-container">
       <Header />
-      <div className="main-content">
-        <Sidebar indices={indices} onSelectIndex={setSelectedIndex} />
-        <Dashboard selectedIndex={selectedIndex} />
+      <div className="content-container">
+        <Sidebar />
+        <MainContent />
       </div>
     </div>
   );
