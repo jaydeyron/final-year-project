@@ -8,8 +8,8 @@
   .content-container {
     display: flex;
     flex: 1;
-    background-color: #ffffff;
-    color: #000000;
+    background-color: #000000;
+    color: #ffffff;
   }
 
 .sidebar-container {
@@ -27,6 +27,7 @@
 }
 
 .toggle-sidebar-button {
+  color: #ffffff;
   position: absolute;
   top: 10px;
   left: 10px;

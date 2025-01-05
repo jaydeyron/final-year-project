@@ -8,7 +8,7 @@ function Header() {
       <div className="logo">SPORS</div>
       <nav className="nav-links">
         <a href="#">Home</a>
-        <a href="#">History</a>
+        {/* <a href="#">History</a> */}
         <a href="#">Settings</a>
       </nav>
     </header>

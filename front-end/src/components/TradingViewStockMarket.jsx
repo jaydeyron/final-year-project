@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-function StockMarketWidget() {
+function TradingViewStockMarket() {
   const container = useRef();
 
   useEffect(() => {
@@ -19,7 +19,7 @@ function StockMarketWidget() {
         "showChart": true,
         "locale": "en",
         "largeChartUrl": "",
-        "isTransparent": false,
+        "isTransparent": true,
         "showSymbolLogo": false,
         "showFloatingTooltip": false,
         "width": "100%",
@@ -44,4 +44,4 @@ function StockMarketWidget() {
   );
 }
 
-export default StockMarketWidget;
+export default TradingViewStockMarket;

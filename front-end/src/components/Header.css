@@ -4,8 +4,8 @@
   align-items: center;
   justify-content: space-between;  /* Centered the content */
   padding: 15px 50px;
-  background-color: #ffffff;
-  color: #000000;
+  background-color: #000000;
+  color: #ffffff;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
@@ -18,9 +18,10 @@
   margin-left: 20px;
   text-decoration: none;
   font-size: 16px;
-  color: #000000;
+  color: #ffffff;
+  transition: 0.12s ease-in;
 }
 
 .nav-links a:hover {
-  color: #007acc;
+  color: #a4a4a4;
 }
