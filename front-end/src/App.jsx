@@ -1,34 +1,24 @@
-// src/App.js
-import React, { useState } from "react";
-import Header from "./components/Header";
-import MainContent from "./components/MainContent";
-import Sidebar from "./components/Sidebar";
-import "./App.css";
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Header from './components/Header';
+import Divider from './components/Divider';
+import Home from './pages/Home';
+import Settings from './pages/Settings';
+import './styles/App.css';
 
 function App() {
-  const [isSidebarVisible, setSidebarVisible] = useState(false);
-  const [selectedChart, setSelectedChart] = useState(null);
-
-  const toggleSidebar = () => {
-    setSidebarVisible(!isSidebarVisible);
-  };
-
-  const handleSelectChart = (chart) => {
-    setSelectedChart(chart);
-    setSidebarVisible(false); // Collapse the sidebar
-  };
-
   return (
-    <div className="app-container">
-      <Header />
-      <button onClick={toggleSidebar} className="toggle-sidebar-button">
-        <span className="material-icons">menu</span>
-      </button>
-      <Sidebar isVisible={isSidebarVisible} onSelectChart={handleSelectChart} />
-      <div className="content-container">
-        <MainContent selectedChart={selectedChart} />
+    <Router>
+      <div className="App">
+        <Header />
+        <Divider />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
       </div>
-    </div>
+    </Router>
   );
 }
 

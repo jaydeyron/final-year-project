@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const TradingViewEconomicCalendar = () => {
+function TradingViewEconomicCalendar() {
   const container = useRef();
 
   useEffect(() => {
@@ -13,10 +13,10 @@ const TradingViewEconomicCalendar = () => {
     script.async = true;
     script.innerHTML = `
       {
+        "width": "60%",
+        "height": "550",
         "colorTheme": "dark",
         "isTransparent": true,
-        "width": "400",
-        "height": "550",
         "locale": "en",
         "importanceFilter": "0,1",
         "countryFilter": "ar,au,br,ca,cn,fr,de,in,id,it,jp,kr,mx,ru,sa,za,tr,gb,us,eu"
@@ -27,10 +27,10 @@ const TradingViewEconomicCalendar = () => {
   }, []);
 
   return (
-    <div className="tradingview-widget-container" ref={container} style={{ width: '400px', height: '550px' }}>
+    <div className="tradingview-widget-container" ref={container}>
       <div className="tradingview-widget-container__widget"></div>
     </div>
   );
-};
+}
 
 export default TradingViewEconomicCalendar;

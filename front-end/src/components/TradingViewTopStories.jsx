@@ -13,7 +13,7 @@ const TradingViewTopStories = ({ symbol }) => {
     script.async = true;
     script.innerHTML = `
       {
-        "feedMode": "${symbol}", // all_symbols
+        "feedMode": "${symbol}",
         "isTransparent": true,
         "displayMode": "regular",
         "width": 400,
@@ -31,6 +31,6 @@ const TradingViewTopStories = ({ symbol }) => {
       <div className="tradingview-widget-container__widget"></div>
     </div>
   );
-};
+}
 
 export default TradingViewTopStories;

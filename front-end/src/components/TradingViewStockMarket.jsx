@@ -20,7 +20,7 @@ function TradingViewStockMarket() {
         "locale": "en",
         "largeChartUrl": "",
         "isTransparent": true,
-        "showSymbolLogo": false,
+        "showSymbolLogo": true,
         "showFloatingTooltip": false,
         "width": "100%",
         "height": "100%",
