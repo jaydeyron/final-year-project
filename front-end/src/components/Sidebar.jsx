@@ -2,14 +2,15 @@
 import React from "react";
 import "./Sidebar.css";
 
-function Sidebar() {
+function Sidebar({ isVisible, onSelectChart }) {
   return (
-    <div className="sidebar">
-      <h2>INDICES</h2>
+    <div className={`sidebar ${isVisible ? "visible" : ""}`}>
+      <h2>SYMBOLS</h2>
       <ul>
-        <li>BANK NIFTY</li>
-        <li>NIFTY 50</li>
-        <li>SENSEX</li>
+        <li onClick={() => onSelectChart("BSE:SENSEX")}>SENSEX</li>
+        <li onClick={() => onSelectChart("BSE:BANK")}>BANKEX</li>
+        <li onClick={() => onSelectChart("BSE:HDFCBANK")}>HDFC BANK</li>
+        <li onClick={() => onSelectChart("BSE:TCS")}>TCS</li>
       </ul>
     </div>
   );

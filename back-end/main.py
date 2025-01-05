@@ -1,7 +1,6 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from kiteconnect import KiteConnect
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import os
 
@@ -19,19 +18,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-@app.get("/")
-def home():
-    html_content = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>My FastAPI App</title>
-    </head>
-    <body>
-        <h1>Welcome to My SPORS App Beta</h1>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
+
+# Serve the React app
+app.mount("/", StaticFiles(directory="../front-end/dist", html=True), name="static")

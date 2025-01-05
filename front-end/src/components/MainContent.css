@@ -1,24 +1,27 @@
 /* src/components/MainContent.css */
 .main-content {
-  flex: 1;
-  /* padding: 20px; */
-}
-
-.main-content h2 {
-  font-size: 18px;
-  font-weight: bold;
-  color: #000000;
-}
-
-.chart-placeholder {
-  width: 100%;
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-  background-color: #e0e0e0;
+  width: 100%;
+}
+
+.chart-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.placeholder {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  color: #333333;
-  text-transform: uppercase;
+  height: 100%;
+}
+
+.tradingview-widget-container {
+  height: 100%;
+  width: 100%;
 }

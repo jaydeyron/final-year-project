@@ -1,11 +1,21 @@
-// src/components/MainContent.js
 import React from "react";
+import TradingViewChart from "./TradingViewChart";
+import StockMarketWidget from "./StockMarketWidget";
 import "./MainContent.css";
 
-function MainContent() {
+function MainContent({ selectedChart }) {
   return (
     <div className="main-content">
-      <div className="chart-placeholder">CHART DATA WILL DISPLAY HERE</div>
+      {selectedChart ? (
+        <div className="chart-container">
+          <h2>{selectedChart} Chart</h2>
+          <TradingViewChart symbol={selectedChart} />
+        </div>
+      ) : (
+        <div className="placeholder">
+          <StockMarketWidget />
+        </div>
+      )}
     </div>
   );
 }
