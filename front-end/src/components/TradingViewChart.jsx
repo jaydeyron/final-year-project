@@ -14,10 +14,13 @@ function TradingViewChart({ symbol }) {
       script.async = true;
       script.innerHTML = `
         {
-          "autosize": true,
+          "width": "100%",
+          "height": "700",
           "symbol": "${symbol}",
           "interval": "D",
           "timezone": "Etc/UTC",
+          "backgroundColor": "rgba(0, 0, 0, 1)",
+          "gridColor": "rgba(66, 66, 66, 1)",
           "theme": "dark",
           "style": "1",
           "locale": "en",

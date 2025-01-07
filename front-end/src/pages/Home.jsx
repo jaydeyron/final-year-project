@@ -12,8 +12,8 @@ import '../styles/Home.css';
 function Home() {
   return (
     <div>
-      <h2>Market Summary</h2>
       <TradingViewTickerTape />
+      <h2>Market Summary</h2>
       <div className='flex-container'>
         <TradingViewMarketOverview />
         <div style={{ flex: '0 0 30%' }}>
@@ -21,8 +21,8 @@ function Home() {
         </div>
       </div>
       <div className='flex-container'>
-        <TradingViewStockHeatmaps />
         <TradingViewEconomicCalendar />
+        <TradingViewStockHeatmaps />
         <TradingViewTopStories symbol="all_symbols" />
       </div>
       <div className='flex-container'>

@@ -1,0 +1,50 @@
+.menu-container {
+  position: relative;
+}
+
+.menu-toggle {
+  background-color: #3d3f49;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+}
+
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.menu-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.menu-content h3 {
+  margin-top: 0;
+}
+
+.menu-content ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.menu-content li {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.menu-content li:hover {
+  background-color: #f0f0f0;
+}

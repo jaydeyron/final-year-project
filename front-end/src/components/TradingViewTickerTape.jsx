@@ -21,8 +21,7 @@ function TradingViewTickerTape() {
           { "description": "USD to INR", "proName": "FX_IDC:USDINR" },
           { "description": "EUR to INR", "proName": "FX_IDC:EURINR" },
           { "description": "ADANI Enterprises", "proName": "BSE:ADANIENT" },
-          { "description": "TATA Consultancy Services", "proName": "BSE:TCS" },
-          { "description": "Japanese Index", "proName": "TVC:NI225" }
+          { "description": "TATA Consultancy Services", "proName": "BSE:TCS" }
         ],
         "showSymbolLogo": true,
         "isTransparent": true,

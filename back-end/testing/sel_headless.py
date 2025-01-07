@@ -38,6 +38,6 @@ def get_nifty_tweets(username, password):
         browser.close()
 
 # Replace 'your_username' and 'your_password' with your actual credentials
-username = "jdeyront"
-password = "jackiechanoldman"
+username = ""
+password = ""
 get_nifty_tweets(username, password)
