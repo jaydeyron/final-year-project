@@ -11,20 +11,42 @@
     align-items: center;
 }
 
+.header-middle {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding: 0 20px;
+}
+
+.header-middle .symbol {
+    text-decoration: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.header-middle .symbol:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
 .header-right {
     display: flex;
     align-items: center;
 }
 
 .header-right a {
-    color: white;
     text-decoration: none;
-    margin-right: 20px;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
     font-size: 1em;
+    margin-right: 20px;
 }
 
 .header-right a:hover {
-    text-decoration: underline;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .logo {

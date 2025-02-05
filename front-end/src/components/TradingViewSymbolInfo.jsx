@@ -17,7 +17,8 @@ const TradingViewSymbolInfo = ({ symbol }) => {
         "width": "100%",
         "locale": "en",
         "colorTheme": "dark",
-        "isTransparent": true
+        "isTransparent": true,
+        "backgroundColor": "transparent"
       }
     `;
 

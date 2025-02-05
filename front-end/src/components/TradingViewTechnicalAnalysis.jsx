@@ -1,30 +1,41 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
-const TradingViewTechnicalAnalysis = ({ symbol }) => {
+function TradingViewTechnicalAnalysis({ symbol }) {
+  const container = useRef();
+
+  useEffect(() => {
+    const containerElement = container.current;
+    containerElement.innerHTML = '';
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
+    script.type = "text/javascript";
+    script.async = true;
+    script.innerHTML = `
+      {
+        "interval": "1D",
+        "width": "100%",
+        "isTransparent": true,
+        "height": "500",
+        "symbol": "${symbol}",
+        "showIntervalTabs": true,
+        "locale": "en",
+        "colorTheme": "dark",
+        "backgroundColor": "transparent"
+      }`;
+
+    containerElement.appendChild(script);
+
+    return () => {
+      containerElement.innerHTML = '';
+    };
+  }, [symbol]);
+
   return (
-    <div className="tradingview-widget-container">
+    <div className="tradingview-widget-container" ref={container}>
       <div className="tradingview-widget-container__widget"></div>
-      <script
-        type="text/javascript"
-        src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js"
-        async
-      >
-        {`
-          {
-            "interval": "1m",
-            "width": 425,
-            "isTransparent": true,
-            "height": 450,
-            "symbol": "${symbol}",
-            "showIntervalTabs": true,
-            "displayMode": "single",
-            "locale": "en",
-            "colorTheme": "dark"
-          }
-        `}
-      </script>
     </div>
   );
-};
+}
 
 export default TradingViewTechnicalAnalysis;

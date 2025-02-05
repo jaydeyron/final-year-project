@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-function TradingViewTopStories({ symbol }) {
+const TradingViewFinancials = ({ symbol }) => {
   const container = useRef();
 
   useEffect(() => {
@@ -8,33 +8,32 @@ function TradingViewTopStories({ symbol }) {
     containerElement.innerHTML = '';
 
     const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
     script.type = "text/javascript";
     script.async = true;
     script.innerHTML = `
       {
-        "feedMode": "symbol",
         "symbol": "${symbol}",
+        "width": "100%",
+        "height": "800",
         "colorTheme": "dark",
         "isTransparent": true,
+        "backgroundColor": "transparent",
         "displayMode": "regular",
-        "width": "100%",
-        "height": "500",
+        "largeChartUrl": "",
+        "showVolume": true,
         "locale": "en"
-      }`;
+      }
+    `;
 
     containerElement.appendChild(script);
-
-    return () => {
-      containerElement.innerHTML = '';
-    };
   }, [symbol]);
 
   return (
-    <div className="tradingview-widget-container" ref={container}>
-      <div className="tradingview-widget-container__widget"></div>
+    <div className="tradingview-widget-container" ref={container} style={{ width: '100%', height: '800px', minHeight: '800px' }}>
+      <div className="tradingview-widget-container__widget" style={{ height: '100%' }}></div>
     </div>
   );
-}
+};
 
-export default TradingViewTopStories;
+export default TradingViewFinancials;

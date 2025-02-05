@@ -7,8 +7,12 @@ function Header() {
   return (
     <header className="header">
       <div className="header-left">
-        {/* <img src={logo} alt="Logo" className="logo" /> */}
         <span className="project-name">SPORS</span>
+      </div>
+      <div className="header-middle">
+        <Link to="/symbol?name=SENSEX" className="symbol">SENSEX</Link>
+        <Link to="/symbol?name=TCS" className="symbol">TCS</Link>
+        <Link to="/symbol?name=HDFCBANK" className="symbol">HDFC BANK</Link>
       </div>
       <nav className="header-right">
         <Link to="/home">Home</Link>

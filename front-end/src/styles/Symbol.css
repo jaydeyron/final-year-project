@@ -1,0 +1,49 @@
+.side-by-side-container {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.side-by-side-item {
+  flex: 1;
+  min-width: 300px;
+  box-sizing: border-box;
+}
+
+.tradingview-widget-container {
+  margin-bottom: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: transparent;
+}
+
+#tradingview_financials {
+  min-height: 800px;
+  height: 800px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#tradingview_chart,
+.tradingview-widget-container__widget {
+  height: 800px !important;
+  width: 100% !important;
+  min-height: 800px;
+}
+
+#tradingview_chart {
+  height: 600px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#symbol-info-container {
+  height: 150px;
+  width: 100%;
+  box-sizing: border-box;
+}
