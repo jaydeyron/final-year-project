@@ -11,18 +11,27 @@ function TradingViewTopStories({ symbol }) {
     script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
     script.type = "text/javascript";
     script.async = true;
-    script.innerHTML = `
-      {
-        "feedMode": "symbol",
-        "symbol": "${symbol}",
-        "colorTheme": "dark",
-        "isTransparent": true,
-        "displayMode": "regular",
-        "width": "100%",
-        "height": "500",
-        "locale": "en"
-      }`;
+    
+    const config = symbol === "all_symbols" ? {
+      "colorTheme": "dark",
+      "isTransparent": true,
+      "displayMode": "regular",
+      "width": "100%",
+      "height": "500",
+      "locale": "en",
+      "feedMode": "market"
+    } : {
+      "feedMode": "symbol",
+      "symbol": symbol,
+      "colorTheme": "dark",
+      "isTransparent": true,
+      "displayMode": "regular",
+      "width": "100%",
+      "height": "500",
+      "locale": "en"
+    };
 
+    script.innerHTML = JSON.stringify(config);
     containerElement.appendChild(script);
 
     return () => {

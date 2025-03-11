@@ -14,7 +14,7 @@ function Symbol() {
   const fullSymbol = symbolName === 'SENSEX' ? symbolName : `BSE:${symbolName}`;
 
   return (
-    <>
+    <div className="symbol-page-container">
       <TradingViewSymbolInfo symbol={fullSymbol} />
       <TradingViewChart symbol={fullSymbol} />
       <TradingViewCompanyProfile symbol={fullSymbol} />
@@ -27,7 +27,7 @@ function Symbol() {
           <TradingViewTopStories symbol={fullSymbol} />
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
