@@ -103,11 +103,8 @@ def predict_next_close():
     dummy[0, 3] = prediction
     predicted_price = scaler.inverse_transform(dummy)[0, 3]
     
-    # Get current price (FIXED)
-    current_price = data['Close'].iloc[-1].item()  # Convert to scalar
+    # Get current price
+    current_price = data['Close'].iloc[-1].item()
     
-    print(f"\nCurrent Price: {current_price:.2f}")
-    print(f"Predicted Next Close: {predicted_price:.2f}")
-
-if __name__ == "__main__":
-    predict_next_close()
+    # Return both values instead of printing
+    return current_price, predicted_price
