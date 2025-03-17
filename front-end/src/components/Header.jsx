@@ -10,13 +10,20 @@ function Header() {
         <span className="project-name">SPORS</span>
       </div>
       <div className="header-middle">
-        <Link to="/symbol?name=SENSEX" className="symbol">SENSEX</Link>
-        <Link to="/symbol?name=TCS" className="symbol">TCS</Link>
-        <Link to="/symbol?name=HDFCBANK" className="symbol">HDFC BANK</Link>
+        <div className="symbols-group">
+          <input
+            type="text"
+            placeholder="Search symbols..."
+            className="search-input"
+          />
+          <Link to="/symbol?name=SENSEX" className="symbol">SENSEX</Link>
+          <Link to="/symbol?name=TCS" className="symbol">TCS</Link>
+          {/* <Link to="/symbol?name=HDFCBANK" className="symbol">HDFC BANK</Link> */}
+        </div>
       </div>
       <nav className="header-right">
         <Link to="/home">Home</Link>
-        <Link to="/settings">Settings</Link>
+        <Link to="/about">About</Link>
       </nav>
     </header>
   );

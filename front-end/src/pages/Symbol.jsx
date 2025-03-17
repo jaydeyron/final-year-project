@@ -5,7 +5,6 @@ import TradingViewChart from '../components/TradingViewChart';
 import TradingViewCompanyProfile from '../components/TradingViewCompanyProfile';
 import TradingViewFinancials from '../components/TradingViewFinancials';
 import TradingViewTechnicalAnalysis from '../components/TradingViewTechnicalAnalysis';
-import TradingViewTopStories from '../components/TradingViewTopStories';
 import '../styles/Symbol.css';
 
 function Symbol() {
@@ -24,7 +23,6 @@ function Symbol() {
           <TradingViewTechnicalAnalysis symbol={fullSymbol} />
         </div>
         <div className="side-by-side-item">
-          <TradingViewTopStories symbol={fullSymbol} />
         </div>
       </div>
     </div>

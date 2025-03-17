@@ -13,9 +13,20 @@
 
 .header-middle {
     display: flex;
-    gap: 20px;
     align-items: center;
     padding: 0 20px;
+}
+
+.symbols-container {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.symbols-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .header-middle .symbol {
@@ -57,4 +68,36 @@
 .project-name {
     font-size: 1.7em;
     font-weight: bold;
+}
+
+.search-container {
+    margin-left: 20px;
+}
+
+.search-wrapper {
+    flex: 0 1 300px;
+    margin-left: auto;
+}
+
+.search-input {
+    width: 180px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    padding: 5px 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9em;
+    margin-left: 10px;
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.search-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
 }
