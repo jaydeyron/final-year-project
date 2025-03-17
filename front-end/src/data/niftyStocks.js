@@ -1,0 +1,22 @@
+export const niftyStocks = [
+    { name: "SENSEX", symbol: "SENSEX" },
+    { name: "Asian Paints", symbol: "ASIANPAINT" },
+    { name: "Axis Bank", symbol: "AXISBANK" },
+    { name: "Bajaj Finance", symbol: "BAJFINANCE" },
+    { name: "Bharti Airtel", symbol: "BHARTIARTL" },
+    { name: "HDFC Bank", symbol: "HDFCBANK" },
+    { name: "HUL", symbol: "HINDUNILVR" },
+    { name: "ICICI Bank", symbol: "ICICIBANK" },
+    { name: "Infosys", symbol: "INFY" },
+    { name: "ITC", symbol: "ITC" },
+    { name: "Kotak Bank", symbol: "KOTAKBANK" },
+    { name: "L&T", symbol: "LT" },
+    { name: "Maruti Suzuki", symbol: "MARUTI" },
+    { name: "Power Grid", symbol: "POWERGRID" },
+    { name: "Reliance", symbol: "RELIANCE" },
+    { name: "SBI", symbol: "SBIN" },
+    { name: "Sun Pharma", symbol: "SUNPHARMA" },
+    { name: "Tata Motors", symbol: "TATAMOTORS" },
+    { name: "Tata Steel", symbol: "TATASTEEL" },
+    { name: "TCS", symbol: "TCS" }
+];
