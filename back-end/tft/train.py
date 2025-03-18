@@ -11,30 +11,42 @@ from utils.model_utils import save_model, load_model
 from config import Config
 from models.tft_model import TemporalFusionTransformer
 
-def load_nifty_stocks():
-    try:
-        with open('../../front-end/src/data/niftyStocks.js', 'r') as f:
-            content = f.read()
-            start_index = content.find('[')
-            end_index = content.rfind(']') + 1
-            json_content = content[start_index:end_index]
-            return json.loads(json_content)
-    except Exception as e:
-        print(f"Error loading niftyStocks: {str(e)}")
-        return []
+# Define niftyStocks data directly in Python
+NIFTY_STOCKS = [
+    { 
+        "name": "Bombay Stock Exchange SENSEX",
+        "symbol": "SENSEX",
+        "tradingViewSymbol": "SENSEX",
+        "bseSymbol": "^BSESN",
+        "startDate": "1997-07-01"
+    },
+    { 
+        "name": "Asian Paints Limited",
+        "symbol": "ASIANPAINT",
+        "tradingViewSymbol": "BSE:ASIANPAINT",
+        "bseSymbol": "ASIANPAINT.BO",
+        "startDate": "2000-01-03"
+    },
+    # ...more stocks...
+    { 
+        "name": "Tata Consultancy Services Limited",
+        "symbol": "TCS",
+        "tradingViewSymbol": "BSE:TCS",
+        "bseSymbol": "TCS.BO",
+        "startDate": "2004-08-25"
+    }
+]
 
 def get_stock_info(symbol, display_symbol=None):
     """Get stock information including start date"""
-    stocks = load_nifty_stocks()
-    
     # Try to find by BSE symbol first
-    for stock in stocks:
+    for stock in NIFTY_STOCKS:
         if stock.get('bseSymbol') == symbol:
             return stock
 
     # Try to find by display symbol if provided
     if display_symbol:
-        for stock in stocks:
+        for stock in NIFTY_STOCKS:
             if stock.get('symbol') == display_symbol:
                 return stock
     

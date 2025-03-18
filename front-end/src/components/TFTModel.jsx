@@ -10,20 +10,28 @@ function TFTModel({ symbol }) {
 
   const API_BASE_URL = 'http://localhost:8000'; // Ensure this is consistently set to port 8000
 
-  // Get the actual symbol from niftyStocks
+  // Get the actual symbol from niftyStocks - optimized to always find the correct symbol
   const getActualSymbol = (displaySymbol) => {
-    // Find stock by symbol
+    // First check if this is a pure symbol match
     const stockInfo = niftyStocks.find(stock => stock.symbol === displaySymbol);
     if (stockInfo) {
-      return stockInfo.bseSymbol; // Use the BSE symbol for YFinance
+      console.log(`Symbol ${displaySymbol} matched to ${stockInfo.symbol} (${stockInfo.bseSymbol})`);
+      return stockInfo.symbol; // Return display symbol for backend to map
     }
     
-    // Fallback handling
+    // Check if it's a BSE:Symbol format
     if (displaySymbol.startsWith('BSE:')) {
-      displaySymbol = displaySymbol.substring(4);
+      const cleanSymbol = displaySymbol.substring(4);
+      const stockInfo = niftyStocks.find(stock => stock.symbol === cleanSymbol);
+      if (stockInfo) {
+        console.log(`BSE:Symbol ${displaySymbol} matched to ${stockInfo.symbol}`);
+        return stockInfo.symbol;
+      }
     }
     
-    return displaySymbol + '.BO';
+    // If we can't find it, just return the original symbol
+    console.log(`No match found for ${displaySymbol}, using as-is`);
+    return displaySymbol;
   };
 
   const handleTrain = async () => {
@@ -36,8 +44,7 @@ function TFTModel({ symbol }) {
       const actualSymbol = getActualSymbol(symbol);
       console.log('Starting training for symbol:', actualSymbol);
       
-      // Start training
-      console.log('Sending training request...');
+      // Send only the display symbol - backend will map to BSE symbol
       const trainResponse = await fetch(`${API_BASE_URL}/train`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,7 +97,7 @@ function TFTModel({ symbol }) {
       const actualSymbol = getActualSymbol(symbol);
       console.log('Starting prediction for symbol:', actualSymbol);
       
-      // Get prediction
+      // Send only the display symbol - backend will map to BSE symbol
       const predictResponse = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

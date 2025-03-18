@@ -24,6 +24,150 @@ logger = logging.getLogger(__name__)
 training_progress = 0
 training_lock = asyncio.Lock()
 
+# Define niftyStocks data directly in Python
+NIFTY_STOCKS = [
+    { 
+        "name": "Bombay Stock Exchange SENSEX",
+        "symbol": "SENSEX",
+        "tradingViewSymbol": "SENSEX",
+        "bseSymbol": "^BSESN",
+        "startDate": "1997-07-01"
+    },
+    { 
+        "name": "Asian Paints Limited",
+        "symbol": "ASIANPAINT",
+        "tradingViewSymbol": "BSE:ASIANPAINT",
+        "bseSymbol": "ASIANPAINT.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "Axis Bank Limited",
+        "symbol": "AXISBANK",
+        "tradingViewSymbol": "BSE:AXISBANK",
+        "bseSymbol": "AXISBANK.BO",
+        "startDate": "2000-05-23"
+    },
+    { 
+        "name": "Bajaj Finance Limited",
+        "symbol": "BAJFINANCE",
+        "tradingViewSymbol": "BSE:BAJFINANCE",
+        "bseSymbol": "BAJFINANCE.BO",
+        "startDate": "2000-06-16"
+    },
+    { 
+        "name": "Bharti Airtel Limited",
+        "symbol": "BHARTIARTL",
+        "tradingViewSymbol": "BSE:BHARTIARTL",
+        "bseSymbol": "BHARTIARTL.BO",
+        "startDate": "2002-02-18"
+    },
+    { 
+        "name": "HDFC Bank Limited",
+        "symbol": "HDFCBANK",
+        "tradingViewSymbol": "BSE:HDFCBANK",
+        "bseSymbol": "HDFCBANK.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "Hindustan Unilever Limited",
+        "symbol": "HINDUNILVR",
+        "tradingViewSymbol": "BSE:HINDUNILVR",
+        "bseSymbol": "HINDUNILVR.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "ICICI Bank Limited",
+        "symbol": "ICICIBANK",
+        "tradingViewSymbol": "BSE:ICICIBANK",
+        "bseSymbol": "ICICIBANK.BO",
+        "startDate": "2002-04-29"
+    },
+    { 
+        "name": "Infosys Limited",
+        "symbol": "INFY",
+        "tradingViewSymbol": "BSE:INFY",
+        "bseSymbol": "INFY.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "ITC Limited",
+        "symbol": "ITC",
+        "tradingViewSymbol": "BSE:ITC",
+        "bseSymbol": "ITC.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "Kotak Mahindra Bank Limited",
+        "symbol": "KOTAKBANK",
+        "tradingViewSymbol": "BSE:KOTAKBANK",
+        "bseSymbol": "KOTAKBANK.BO",
+        "startDate": "2000-03-21"
+    },
+    { 
+        "name": "Larsen & Toubro Limited",
+        "symbol": "LT",
+        "tradingViewSymbol": "BSE:LT",
+        "bseSymbol": "LT.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "Maruti Suzuki India Limited",
+        "symbol": "MARUTI",
+        "tradingViewSymbol": "BSE:MARUTI",
+        "bseSymbol": "MARUTI.BO",
+        "startDate": "2003-07-09"
+    },
+    { 
+        "name": "Power Grid Corporation of India Limited",
+        "symbol": "POWERGRID",
+        "tradingViewSymbol": "BSE:POWERGRID",
+        "bseSymbol": "POWERGRID.BO",
+        "startDate": "2007-10-05"
+    },
+    { 
+        "name": "Reliance Industries Limited",
+        "symbol": "RELIANCE",
+        "tradingViewSymbol": "BSE:RELIANCE",
+        "bseSymbol": "RELIANCE.BO",
+        "startDate": "2000-01-04"
+    },
+    { 
+        "name": "State Bank of India",
+        "symbol": "SBIN",
+        "tradingViewSymbol": "BSE:SBIN",
+        "bseSymbol": "SBIN.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "Sun Pharmaceutical Industries Limited",
+        "symbol": "SUNPHARMA",
+        "tradingViewSymbol": "BSE:SUNPHARMA",
+        "bseSymbol": "SUNPHARMA.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "Tata Motors Limited",
+        "symbol": "TATAMOTORS",
+        "tradingViewSymbol": "BSE:TATAMOTORS",
+        "bseSymbol": "TATAMOTORS.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "Tata Steel Limited",
+        "symbol": "TATASTEEL",
+        "tradingViewSymbol": "BSE:TATASTEEL",
+        "bseSymbol": "TATASTEEL.BO",
+        "startDate": "2000-01-03"
+    },
+    { 
+        "name": "Tata Consultancy Services Limited",
+        "symbol": "TCS",
+        "tradingViewSymbol": "BSE:TCS",
+        "bseSymbol": "TCS.BO",
+        "startDate": "2004-08-25"
+    }
+]
+
 # CORS Middleware - only needed during development
 app.add_middleware(
     CORSMiddleware,
@@ -40,61 +184,51 @@ app.mount("/assets", StaticFiles(directory="../front-end/dist/assets"), name="as
 # Handle client-side routing - must be before static file mounting
 @app.get("/{full_path:path}")
 async def serve_spa(request: Request, full_path: str):
-    if full_path.startswith("assets/"):
+    if (full_path.startswith("assets/")):
         return None  # Let the static files handler deal with assets
     return FileResponse("../front-end/dist/index.html")
 
 class ModelRequest(BaseModel):
     symbol: str
 
-# Load niftyStocks data
-def load_nifty_stocks():
-    try:
-        with open('../front-end/src/data/niftyStocks.js', 'r') as f:
-            content = f.read()
-            # Extract the array part between the export and the closing bracket
-            start_index = content.find('[')
-            end_index = content.rfind(']') + 1
-            json_content = content[start_index:end_index]
-            return json.loads(json_content)
-    except Exception as e:
-        logger.error(f"Error loading niftyStocks: {str(e)}")
-        # Fallback to a minimal stock list if file can't be loaded
-        return [
-            {"symbol": "SENSEX", "bseSymbol": "^BSESN"},
-            {"symbol": "TCS", "bseSymbol": "TCS.BO"}
-        ]
-
 # Map displaySymbol to bseSymbol
 def map_symbol_to_bse(symbol):
-    stocks = load_nifty_stocks()
-    
-    # Direct match
-    for stock in stocks:
+    """Map a display symbol to its BSE/Yahoo Finance symbol"""
+    # Direct match against symbol field
+    for stock in NIFTY_STOCKS:
         if stock["symbol"] == symbol:
             logger.info(f"Mapped {symbol} to {stock['bseSymbol']}")
-            return stock["bseSymbol"]
+            return stock["bseSymbol"], stock["symbol"]
     
-    # Remove BSE: prefix if present
+    # Check if it's already a BSE symbol
+    for stock in NIFTY_STOCKS:
+        if stock["bseSymbol"] == symbol:
+            logger.info(f"{symbol} is already a BSE symbol")
+            return symbol, stock["symbol"]
+    
+    # Remove BSE: prefix if present and try again
     if symbol.startswith("BSE:"):
         clean_symbol = symbol[4:]
-        for stock in stocks:
+        for stock in NIFTY_STOCKS:
             if stock["symbol"] == clean_symbol:
                 logger.info(f"Mapped {symbol} to {stock['bseSymbol']}")
-                return stock["bseSymbol"]
+                return stock["bseSymbol"], stock["symbol"]
     
     # Fallback: add .BO suffix if not found
     logger.warning(f"No mapping found for {symbol}, using fallback")
-    return f"{symbol}.BO" if not symbol.endswith(".BO") else symbol
+    display_symbol = symbol.replace('.BO', '') if symbol.endswith('.BO') else symbol
+    bse_symbol = f"{display_symbol}.BO" if not symbol.endswith(".BO") else symbol
+    return bse_symbol, display_symbol
 
 @app.post('/train')
 async def train_model(request: ModelRequest):
     try:
-        # Map the display symbol to BSE symbol
-        display_symbol = request.symbol
-        bse_symbol = map_symbol_to_bse(display_symbol)
+        # Map the symbol to BSE symbol and get display symbol
+        input_symbol = request.symbol
+        bse_symbol, display_symbol = map_symbol_to_bse(input_symbol)
         
-        logger.info(f"Starting training for {display_symbol} (BSE: {bse_symbol})")
+        logger.info(f"Starting training for display:{display_symbol} using data:{bse_symbol}")
+        global training_progress
         async with training_lock:
             training_progress = 0
         
@@ -122,11 +256,11 @@ async def train_model(request: ModelRequest):
 @app.post('/predict')
 async def predict(request: ModelRequest):
     try:
-        # Map the display symbol to BSE symbol
-        display_symbol = request.symbol
-        bse_symbol = map_symbol_to_bse(display_symbol)
+        # Map the symbol to BSE symbol and get display symbol
+        input_symbol = request.symbol
+        bse_symbol, display_symbol = map_symbol_to_bse(input_symbol)
         
-        logger.info(f"Predicting for {display_symbol} (BSE: {bse_symbol})")
+        logger.info(f"Predicting for display:{display_symbol} using data:{bse_symbol}")
         process = await asyncio.create_subprocess_exec(
             sys.executable,
             'tft/predict.py',
