@@ -10,6 +10,7 @@ function Header() {
   const navigate = useNavigate();
   const searchRef = useRef(null);
   const [isExiting, setIsExiting] = useState(false);
+  const [inputRef, setInputRef] = useState(null); // Add this state
 
   useEffect(() => {
     if (showDropdown && !searchTerm) {
@@ -38,6 +39,7 @@ function Header() {
     navigate(`/symbol?name=${encodeURIComponent(symbol)}`);
     setSearchTerm('');
     setShowDropdown(false);
+    inputRef?.blur(); // Remove focus from input
   };
 
   const handleDropdownClose = () => {
@@ -57,6 +59,7 @@ function Header() {
         <div className="symbols-group" ref={searchRef}>
           <div className="search-container">
             <input
+              ref={ref => setInputRef(ref)}  // Add this ref
               type="text"
               placeholder="Search symbols..."
               className="search-input"

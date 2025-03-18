@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 import yfinance as yf
+import ta
 import torch
 from torch.utils.data import Dataset
+from config import Config  # Add this import
 
 class TimeSeriesDataset(Dataset):
     """
@@ -20,73 +22,44 @@ class TimeSeriesDataset(Dataset):
         return self.data[idx], self.targets[idx]
 
 def fetch_data(symbol, start_date, end_date):
-    """
-    Fetch stock data using yfinance.
-    """
-    data = yf.download(symbol, start=start_date, end=end_date)
-    if data.empty:
-        raise ValueError("No data found for symbol.")
-    return data
-
-def add_technical_indicators(data):
-    """
-    Add technical indicators to the stock data.
-    """
-    df = data.copy()
+    """Fetch stock data and add technical indicators"""
+    df = yf.download(symbol, start=start_date, end=end_date)
     
-    # Simple Moving Averages
-    df['SMA_5'] = df['Close'].rolling(window=5).mean()
-    df['SMA_20'] = df['Close'].rolling(window=20).mean()
-    
-    # Relative Strength Index (RSI)
-    df['RSI_14'] = compute_rsi(df['Close'])
-    
-    # Bollinger Bands
-    df['BB_upper'], df['BB_lower'] = compute_bollinger_bands(df['Close'])
-    
-    return df.dropna()
-
-def compute_rsi(series, period=14):
-    """
-    Compute the Relative Strength Index (RSI).
-    """
-    delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(period).mean()
-    rs = gain / loss
-    return 100 - (100 / (1 + rs))
-
-def compute_bollinger_bands(series, period=20):
-    """
-    Compute Bollinger Bands.
-    """
-    sma = series.rolling(window=period).mean()
-    std = series.rolling(window=period).std()
-    return sma + (2 * std), sma - (2 * std)
-
-def preprocess_data(data):
-    """
-    Preprocess the stock data by adding technical indicators and scaling.
-    """
     # Add technical indicators
-    data = add_technical_indicators(data)
+    df['MA_10'] = ta.trend.sma_indicator(df.Close, window=10)
+    df['RSI'] = ta.momentum.rsi(df.Close)
+    macd = ta.trend.MACD(df.Close)
+    df['MACD'] = macd.macd()
     
-    # Select features
-    features = ['Open', 'High', 'Low', 'Close', 'Volume', 'SMA_5', 'SMA_20', 'RSI_14', 'BB_upper', 'BB_lower']
-    data = data[features].dropna()
+    bb = ta.volatility.BollingerBands(df.Close)
+    df['Upper_Band'] = bb.bollinger_hband()
+    df['Lower_Band'] = bb.bollinger_lband()
     
-    # Scale the data
-    scaler = MinMaxScaler()
-    scaled_data = scaler.fit_transform(data)
+    # Forward fill NaN values
+    df = df.fillna(method='ffill')
     
-    return scaled_data, scaler
+    return df
+
+def preprocess_data(data, scaler=None):
+    """Preprocess data and apply scaling"""
+    features = data[Config.FEATURES].values
+    
+    if scaler is None:
+        scaler = StandardScaler()
+        features = scaler.fit_transform(features)
+    else:
+        features = scaler.transform(features)
+    
+    return features, scaler
 
 def create_sequences(data, seq_length):
-    """
-    Create sequences of data for time-series forecasting.
-    """
+    """Create sequences for training"""
     xs, ys = [], []
+    
     for i in range(len(data) - seq_length):
-        xs.append(data[i:i + seq_length])
-        ys.append(data[i + seq_length, 3])  # Target is the 'Close' price
+        x = data[i:(i + seq_length)]
+        y = data[i + seq_length, 3]  # Using Close price as target
+        xs.append(x)
+        ys.append(y)
+        
     return np.array(xs), np.array(ys)
