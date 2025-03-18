@@ -9,6 +9,7 @@ function Header() {
   const [filteredStocks, setFilteredStocks] = useState([]);
   const navigate = useNavigate();
   const searchRef = useRef(null);
+  const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
     if (showDropdown && !searchTerm) {
@@ -29,14 +30,22 @@ function Header() {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.body.addEventListener('mousedown', handleClickOutside);
+    return () => document.body.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleStockSelect = (symbol) => {
     navigate(`/symbol?name=${encodeURIComponent(symbol)}`);
     setSearchTerm('');
     setShowDropdown(false);
+  };
+
+  const handleDropdownClose = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      setShowDropdown(false);
+      setIsExiting(false);
+    }, 300); // Match the transition duration
   };
 
   return (
@@ -57,14 +66,21 @@ function Header() {
                 setShowDropdown(true);
                 setFilteredStocks(niftyStocks);
               }}
+              onBlur={handleDropdownClose}
             />
             {showDropdown && filteredStocks.length > 0 && (
-              <div className="search-dropdown">
+              <div
+                className={`search-dropdown ${isExiting ? 'exiting' : ''}`}
+                onMouseDown={(e) => {
+                  // Prevent onBlur from firing when clicking dropdown items
+                  e.preventDefault();
+                }}
+              >
                 {filteredStocks.map((stock) => (
                   <div
                     key={stock.symbol}
                     className="search-item"
-                    onClick={() => handleStockSelect(stock.symbol)}
+                    onMouseDown={() => handleStockSelect(stock.symbol)}
                   >
                     {stock.name} ({stock.symbol})
                   </div>

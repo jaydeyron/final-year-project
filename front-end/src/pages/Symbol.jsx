@@ -18,13 +18,7 @@ function Symbol() {
       <TradingViewChart symbol={fullSymbol} />
       <TradingViewCompanyProfile symbol={fullSymbol} />
       <TradingViewFinancials symbol={fullSymbol} />
-      <div className="side-by-side-container">
-        <div className="side-by-side-item">
-          <TradingViewTechnicalAnalysis symbol={fullSymbol} />
-        </div>
-        <div className="side-by-side-item">
-        </div>
-      </div>
+      <TradingViewTechnicalAnalysis symbol={fullSymbol} />
     </div>
   );
 }

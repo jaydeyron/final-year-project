@@ -2,12 +2,12 @@ import yfinance as yf
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import logging
-import joblib
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,45 +24,18 @@ class TimeSeriesDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.targets[idx]
 
-# Gated Residual Network
-class GatedResidualNetwork(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, dropout):
-        super().__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)  # Project input to hidden space
-        self.fc2 = nn.Linear(hidden_dim, output_dim) # Second transformation
-        self.fc_residual = nn.Linear(input_dim, output_dim)  # New: Ensure x is projected to match x1
-        self.elu = nn.ELU()
-        self.dropout = nn.Dropout(dropout)
-        self.gate = nn.Linear(output_dim, output_dim)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        x1 = self.fc1(x)
-        x1 = self.elu(x1)
-        x1 = self.fc2(x1)
-        x1 = self.dropout(x1)
-        gate = self.sigmoid(self.gate(x1))
-
-        # Ensure residual connection has the same dimension
-        x_residual = self.fc_residual(x)  # Project input x to match x1
-
-        return gate * x1 + (1 - gate) * x_residual
-
-# Temporal Fusion Transformer model
+# Model: Improved LSTM-based TFT
 class TemporalFusionTransformer(nn.Module):
-    def __init__(self, input_size, hidden_size, num_heads, num_layers, output_size, dropout=0.3):
+    def __init__(self, input_size, hidden_size, output_size, num_layers, dropout=0.3):
         super().__init__()
-        self.variable_selection = GatedResidualNetwork(input_size, hidden_size, hidden_size, dropout)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=num_heads, dropout=dropout)
-        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        x = self.variable_selection(x)
-        x = self.transformer_encoder(x)
-        x = self.dropout(x[:, -1, :])
-        return self.fc(x)
+        lstm_out, _ = self.lstm(x)
+        lstm_out = self.dropout(lstm_out[:, -1, :])
+        return self.fc(lstm_out)
 
 # Data fetching
 def fetch_data(symbol, start_date, end_date):
@@ -106,7 +79,6 @@ def preprocess_data(data):
 
     scaler = MinMaxScaler()
     scaled_data = scaler.fit_transform(data)
-    joblib.dump(scaler, 'scaler.pkl')
     return scaled_data, scaler
 
 # Create sequences
@@ -122,6 +94,7 @@ def train_model(model, train_loader, epochs, learning_rate, device):
     model = model.to(device)
     criterion = nn.SmoothL1Loss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
     print(f"\nStarting training for {epochs} epochs...")
     for epoch in range(epochs):
@@ -139,18 +112,16 @@ def train_model(model, train_loader, epochs, learning_rate, device):
             total_loss += loss.item()
 
         avg_loss = total_loss / len(train_loader)
+        scheduler.step(avg_loss)
+
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.6f}")
-
-    torch.save(model.state_dict(), 'tft_model.pth')
-
 
 def main():
     symbol = "^BSESN"
-    start_date = "1986-01-01"
+    start_date = "2020-01-01"
     end_date = "2025-02-11"
     seq_length = 60
     hidden_size = 128
-    num_heads = 4
     num_layers = 4
     batch_size = 64
     epochs = 100
@@ -159,6 +130,7 @@ def main():
 
     print("Fetching data...")
     data = fetch_data(symbol, start_date, end_date)
+    current_price = float(data['Close'].iloc[-1])
 
     print("Preprocessing data...")
     scaled_data, scaler = preprocess_data(data)
@@ -170,10 +142,26 @@ def main():
     dataset = TimeSeriesDataset(xs, ys)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+    print(f"\nInitializing model with:")
+    print(f"Hidden size: {hidden_size}")
+    print(f"Number of layers: {num_layers}")
+    print(f"Sequence length: {seq_length}")
+    print(f"Using device: {device}")
+
     input_size = xs.shape[2]
-    model = TemporalFusionTransformer(input_size, hidden_size, num_heads, num_layers, 1)
+    model = TemporalFusionTransformer(input_size, hidden_size, 1, num_layers)
 
     train_model(model, dataloader, epochs, learning_rate, device)
+
+    print("\nMaking prediction...")
+    model.eval()
+    with torch.no_grad():
+        last_sequence = torch.tensor(scaled_data[-seq_length:], dtype=torch.float32).unsqueeze(0).to(device)
+        prediction = model(last_sequence).cpu().numpy()[0, 0]
+        predicted_price = scaler.inverse_transform([[0, 0, 0, prediction, 0, 0, 0, 0, 0, 0]])[0, 3]
+
+        print(f"\nCurrent price: {current_price:.2f}")
+        print(f"Predicted next day's closing price: {predicted_price:.2f}")
 
 if __name__ == "__main__":
     main()

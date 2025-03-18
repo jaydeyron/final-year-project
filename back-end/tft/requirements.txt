@@ -1,0 +1,5 @@
+torch
+yfinance
+scikit-learn
+pandas
+numpy

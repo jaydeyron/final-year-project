@@ -91,6 +91,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 0.9em;
     margin-left: 10px;
+    transition: all 0.2s ease;
 }
 
 .search-input::placeholder {
@@ -102,6 +103,17 @@
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+@keyframes dropdownEnter {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .search-dropdown {
@@ -118,12 +130,25 @@
     overflow-y: auto;
     z-index: 1000;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    opacity: 1;
+    transform: translateY(0);
+    animation: dropdownEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    /* Keep the transition for exit animation */
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-dropdown.exiting {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
 }
 
 .search-item {
     padding: 8px 12px;
     color: #fff;
     cursor: pointer;
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .search-item:hover {

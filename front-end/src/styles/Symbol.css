@@ -4,28 +4,6 @@
   padding: 20px 40px;
 }
 
-.side-by-side-container {
-  display: flex;
-  gap: 20px;
-  padding: 20px;
-  flex-wrap: nowrap;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.side-by-side-item {
-  flex: 1;
-  width: 50%;
-  min-width: 0;
-  box-sizing: border-box;
-  height: 500px;
-}
-
-.side-by-side-item .tradingview-widget-container {
-  height: 100%;
-  margin-bottom: 0;
-}
-
 .tradingview-widget-container {
   margin-bottom: 20px;
   border-radius: 8px;

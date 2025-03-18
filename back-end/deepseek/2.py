@@ -2,12 +2,12 @@ import yfinance as yf
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import logging
-import joblib
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,19 +24,70 @@ class TimeSeriesDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.targets[idx]
 
-# Temporal Fusion Transformer model
+# Full TFT Model
 class TemporalFusionTransformer(nn.Module):
-    def __init__(self, input_size, hidden_size, num_heads, num_layers, output_size, dropout=0.3):
+    def __init__(self, input_size, hidden_size, output_size, num_layers, num_heads, dropout=0.3):
         super().__init__()
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=num_heads, dropout=dropout)
-        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
+        self.hidden_size = hidden_size
+        self.num_heads = num_heads
+
+        # Static covariate encoder (if applicable)
+        self.static_encoder = nn.Sequential(
+            nn.Linear(1, hidden_size),  # Assuming 1 static feature (e.g., stock symbol)
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size)
+        )
+
+        # Variable Selection Network
+        self.variable_selection = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.GELU(),
+            nn.Linear(hidden_size, input_size),
+            nn.Softmax(dim=-1)
+        )
+
+        # LSTM for temporal processing
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+
+        # Multi-head attention
+        self.attention = nn.MultiheadAttention(hidden_size, num_heads, dropout=dropout)
+
+        # Gating mechanism
+        self.gate = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.Sigmoid()
+        )
+
+        # Output layer
         self.fc = nn.Linear(hidden_size, output_size)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
-        x = self.transformer_encoder(x)
-        x = self.dropout(x[:, -1, :])
-        return self.fc(x)
+    def forward(self, x, static=None):
+        # Static covariate encoding (if applicable)
+        if static is not None:
+            static_encoded = self.static_encoder(static)
+            static_encoded = static_encoded.unsqueeze(1).expand(-1, x.size(1), -1)
+            x = torch.cat([x, static_encoded], dim=-1)
+
+        # Variable selection
+        variable_weights = self.variable_selection(x)
+        x = x * variable_weights
+
+        # LSTM for temporal processing
+        lstm_out, _ = self.lstm(x)
+        lstm_out = self.dropout(lstm_out)
+
+        # Multi-head attention
+        attn_output, _ = self.attention(lstm_out, lstm_out, lstm_out)
+        attn_output = self.dropout(attn_output)
+
+        # Gating mechanism
+        gate_output = self.gate(attn_output)
+        gated_output = gate_output * attn_output
+
+        # Final output
+        output = self.fc(gated_output[:, -1, :])
+        return output
 
 # Data fetching
 def fetch_data(symbol, start_date, end_date):
@@ -80,7 +131,6 @@ def preprocess_data(data):
 
     scaler = MinMaxScaler()
     scaled_data = scaler.fit_transform(data)
-    joblib.dump(scaler, 'scaler.pkl')
     return scaled_data, scaler
 
 # Create sequences
@@ -96,6 +146,7 @@ def train_model(model, train_loader, epochs, learning_rate, device):
     model = model.to(device)
     criterion = nn.SmoothL1Loss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
     print(f"\nStarting training for {epochs} epochs...")
     for epoch in range(epochs):
@@ -113,19 +164,18 @@ def train_model(model, train_loader, epochs, learning_rate, device):
             total_loss += loss.item()
 
         avg_loss = total_loss / len(train_loader)
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.6f}")
-    
-    torch.save(model.state_dict(), 'tft_model.pth')
+        scheduler.step(avg_loss)
 
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.6f}")
 
 def main():
     symbol = "^BSESN"
-    start_date = "1986-01-01"
+    start_date = "2020-01-01"
     end_date = "2025-02-11"
     seq_length = 60
     hidden_size = 128
+    num_layers = 2
     num_heads = 4
-    num_layers = 4
     batch_size = 64
     epochs = 100
     learning_rate = 0.0005
@@ -133,6 +183,7 @@ def main():
 
     print("Fetching data...")
     data = fetch_data(symbol, start_date, end_date)
+    current_price = float(data['Close'].iloc[-1])
 
     print("Preprocessing data...")
     scaled_data, scaler = preprocess_data(data)
@@ -144,10 +195,27 @@ def main():
     dataset = TimeSeriesDataset(xs, ys)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+    print(f"\nInitializing model with:")
+    print(f"Hidden size: {hidden_size}")
+    print(f"Number of layers: {num_layers}")
+    print(f"Number of attention heads: {num_heads}")
+    print(f"Sequence length: {seq_length}")
+    print(f"Using device: {device}")
+
     input_size = xs.shape[2]
-    model = TemporalFusionTransformer(input_size, hidden_size, num_heads, num_layers, 1)
+    model = TemporalFusionTransformer(input_size, hidden_size, 1, num_layers, num_heads)
 
     train_model(model, dataloader, epochs, learning_rate, device)
+
+    print("\nMaking prediction...")
+    model.eval()
+    with torch.no_grad():
+        last_sequence = torch.tensor(scaled_data[-seq_length:], dtype=torch.float32).unsqueeze(0).to(device)
+        prediction = model(last_sequence).cpu().numpy()[0, 0]
+        predicted_price = scaler.inverse_transform([[0, 0, 0, prediction, 0, 0, 0, 0, 0, 0]])[0, 3]
+
+        print(f"\nCurrent price: {current_price:.2f}")
+        print(f"Predicted next day's closing price: {predicted_price:.2f}")
 
 if __name__ == "__main__":
     main()
