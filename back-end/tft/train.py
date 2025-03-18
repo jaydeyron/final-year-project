@@ -11,31 +11,13 @@ from utils.model_utils import save_model, load_model
 from config import Config
 from models.tft_model import TemporalFusionTransformer
 
-# Define niftyStocks data directly in Python
-NIFTY_STOCKS = [
-    { 
-        "name": "Bombay Stock Exchange SENSEX",
-        "symbol": "SENSEX",
-        "tradingViewSymbol": "SENSEX",
-        "bseSymbol": "^BSESN",
-        "startDate": "1997-07-01"
-    },
-    { 
-        "name": "Asian Paints Limited",
-        "symbol": "ASIANPAINT",
-        "tradingViewSymbol": "BSE:ASIANPAINT",
-        "bseSymbol": "ASIANPAINT.BO",
-        "startDate": "2000-01-03"
-    },
-    # ...more stocks...
-    { 
-        "name": "Tata Consultancy Services Limited",
-        "symbol": "TCS",
-        "tradingViewSymbol": "BSE:TCS",
-        "bseSymbol": "TCS.BO",
-        "startDate": "2004-08-25"
-    }
-]
+# Import NIFTY_STOCKS from a shared module instead of defining it here
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from shared.stock_data import NIFTY_STOCKS
+except ImportError:
+    # Fallback if shared module not available
+    NIFTY_STOCKS = []
 
 def get_stock_info(symbol, display_symbol=None):
     """Get stock information including start date"""
@@ -58,9 +40,12 @@ def get_stock_info(symbol, display_symbol=None):
     }
 
 def main():
+    # Update argument parser to accept more parameters
     parser = argparse.ArgumentParser(description='Train TFT model for a specific stock')
-    parser.add_argument('--symbol', type=str, required=True, help='BSE symbol for data fetching')
-    parser.add_argument('--display-symbol', type=str, help='Display symbol for model saving')
+    parser.add_argument('--symbol', type=str, required=True, help='BSE symbol for data fetching (e.g., "TCS.BO")')
+    parser.add_argument('--display-symbol', type=str, help='Display symbol for model saving (e.g., "TCS")')
+    parser.add_argument('--start-date', type=str, help='Start date for training data (format: YYYY-MM-DD)')
+    parser.add_argument('--end-date', type=str, help='End date for training data (format: YYYY-MM-DD)')
     parser.add_argument('--update', action='store_true', help='Update existing model instead of training from scratch')
     parser.add_argument('--epochs', type=int, default=Config.EPOCHS, help='Number of training epochs')
     args = parser.parse_args()
@@ -72,17 +57,25 @@ def main():
     stock_info = get_stock_info(args.symbol, args.display_symbol)
     print(f"Training model for {stock_info.get('name', args.symbol)} (symbol: {args.symbol})")
     
-    # Use the start date from stock info
-    start_date = stock_info.get('startDate', "2000-01-01")
-    end_date = datetime.now().strftime('%Y-%m-%d')
+    # Use provided start date or fall back to stock info
+    start_date = args.start_date or stock_info.get('startDate', "2000-01-01")
+    
+    # Use provided end date or default to today
+    end_date = args.end_date or datetime.now().strftime('%Y-%m-%d')
     
     try:
         # Fetch and preprocess data
         print(f"Fetching data from {start_date} to {end_date}...")
         data = fetch_data(args.symbol, start_date, end_date)
+        print(f"Fetched {len(data)} data points")
+        
+        # ...remaining code stays the same...
         scaled_data, scaler = preprocess_data(data)
         xs, ys = create_sequences(scaled_data, Config.SEQ_LENGTH)
-
+        
+        # Log summary of sequence creation
+        print(f"Created {len(xs)} sequences for training")
+        
         # Create dataset and dataloader
         dataset = TimeSeriesDataset(xs, ys)
         dataloader = DataLoader(dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
@@ -121,6 +114,7 @@ def main():
             total_epochs = args.epochs
 
         # Train model
+        print(f"Starting training for {args.epochs} epochs...")
         trainer = Trainer(model, dataloader, Config.DEVICE, Config.LEARNING_RATE)
         trainer.train(args.epochs)
 
@@ -128,8 +122,11 @@ def main():
         additional_info = {
             'data_start_date': start_date,
             'data_end_date': end_date,
+            'symbol_name': stock_info.get('name', save_symbol),
+            'bse_symbol': args.symbol,
             'training_completed': datetime.now().isoformat(),
-            'epochs': total_epochs
+            'epochs': total_epochs,
+            'data_points': len(data)
         }
         
         saved_paths = save_model(

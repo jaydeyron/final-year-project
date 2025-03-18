@@ -30,8 +30,35 @@ class Config:
     MODEL_DIR = os.path.join(BASE_DIR, 'models')
     
     @classmethod
+    def get_symbol_dir(cls, symbol):
+        """Get directory for a specific symbol"""
+        # Sanitize symbol for filesystem
+        safe_symbol = symbol
+        if symbol.endswith('.BO'):
+            safe_symbol = symbol[:-3]
+        elif symbol.startswith('^'):
+            safe_symbol = symbol[1:]
+        
+        # Create directory if it doesn't exist
+        symbol_dir = os.path.join(cls.MODEL_DIR, safe_symbol)
+        os.makedirs(symbol_dir, exist_ok=True)
+        return symbol_dir
+    
+    @classmethod
     def get_model_path(cls, symbol):
-        """Get model path for a specific symbol"""
-        os.makedirs(cls.MODEL_DIR, exist_ok=True)
-        safe_symbol = symbol.replace('^', 'SENSEX').replace('.BO', '').replace(':', '_')
-        return os.path.join(cls.MODEL_DIR, f"{safe_symbol}.pth")
+        """Get paths for model and scaler files"""
+        # This method name is used in model_utils.py
+        base_dir = os.path.join(cls.MODEL_DIR, symbol.replace('^', 'SENSEX').replace('.BO', ''))
+        os.makedirs(base_dir, exist_ok=True)
+        return {
+            'model': os.path.join(base_dir, 'model.pth'),
+            'scaler': os.path.join(base_dir, 'scaler.json')
+        }
+
+    # Also add the method expected by newer code (with same functionality)
+    @classmethod
+    def get_model_paths(cls, symbol):
+        """Alias for get_model_path with additional metadata path"""
+        paths = cls.get_model_path(symbol)
+        paths['metadata'] = os.path.join(os.path.dirname(paths['model']), 'metadata.json')
+        return paths

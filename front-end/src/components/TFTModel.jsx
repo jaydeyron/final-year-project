@@ -7,6 +7,8 @@ function TFTModel({ symbol }) {
   const [prediction, setPrediction] = useState(null);
   const [error, setError] = useState(null);
   const [activeAction, setActiveAction] = useState(null); // 'train' or 'predict'
+  const [useCustomDate, setUseCustomDate] = useState(false);
+  const [startDate, setStartDate] = useState('');
 
   const API_BASE_URL = 'http://localhost:8000'; // Ensure this is consistently set to port 8000
 
@@ -40,15 +42,28 @@ function TFTModel({ symbol }) {
       setError(null);
       setPrediction(null);
       setActiveAction('train');
+      setProgress(0); // Reset progress
 
       const actualSymbol = getActualSymbol(symbol);
       console.log('Starting training for symbol:', actualSymbol);
       
+      // Prepare request body with optional start date
+      const requestBody = { 
+        symbol: actualSymbol
+      };
+      
+      // Add start date if custom date is enabled
+      if (useCustomDate && startDate) {
+        requestBody.start_date = startDate;
+        console.log(`Using custom start date: ${startDate}`);
+      }
+      
       // Send only the display symbol - backend will map to BSE symbol
+      console.log(`Sending training request to ${API_BASE_URL}/train`);
       const trainResponse = await fetch(`${API_BASE_URL}/train`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol: actualSymbol })
+        body: JSON.stringify(requestBody)
       });
       console.log('Training response status:', trainResponse.status);
 
@@ -62,9 +77,17 @@ function TFTModel({ symbol }) {
       console.log('Starting progress polling...');
       const progressInterval = setInterval(async () => {
         try {
+          console.log('Polling progress...');
           const progressResponse = await fetch(`${API_BASE_URL}/progress`);
+          console.log('Progress response status:', progressResponse.status);
+          
+          if (!progressResponse.ok) {
+            console.error('Progress check failed:', progressResponse.status);
+            return;
+          }
+          
           const data = await progressResponse.json();
-          console.log('Progress update:', data.progress);
+          console.log('Progress data:', data);
           setProgress(data.progress);
           
           if (data.progress === 100) {
@@ -79,6 +102,16 @@ function TFTModel({ symbol }) {
           setError(err.message);
         }
       }, 1000);
+
+      // Add a safety timeout to stop polling after 5 minutes
+      setTimeout(() => {
+        clearInterval(progressInterval);
+        if (loading) {
+          console.log('Training timed out after 5 minutes');
+          setLoading(false);
+          setError('Training timed out. Check logs for details.');
+        }
+      }, 5 * 60 * 1000);
 
     } catch (err) {
       console.error('Error in handleTrain:', err);
@@ -129,6 +162,26 @@ function TFTModel({ symbol }) {
         <div className="tft-content">
           <div className="tft-actions-vertical">
             <div className="tft-action-block">
+              {/* Add custom date option */}
+              <div className="custom-date-option">
+                <label>
+                  <input 
+                    type="checkbox" 
+                    checked={useCustomDate} 
+                    onChange={e => setUseCustomDate(e.target.checked)} 
+                  />
+                  Use custom start date
+                </label>
+                {useCustomDate && (
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={e => setStartDate(e.target.value)}
+                    className="date-input"
+                  />
+                )}
+              </div>
+              
               <button 
                 className="predict-button"
                 onClick={handleTrain}

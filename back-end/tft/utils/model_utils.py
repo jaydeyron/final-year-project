@@ -7,7 +7,8 @@ from config import Config
 
 def save_model(symbol, model, scaler, input_size, epochs=None, additional_info=None):
     """Save model, scaler and metadata for a specific symbol"""
-    paths = Config.get_model_paths(symbol)
+    # Changed from get_model_paths to get_model_path to match config.py method name
+    paths = Config.get_model_path(symbol)
     
     # Create directory if needed
     os.makedirs(os.path.dirname(paths['model']), exist_ok=True)
@@ -34,23 +35,30 @@ def save_model(symbol, model, scaler, input_size, epochs=None, additional_info=N
     if additional_info:
         metadata.update(additional_info)
     
-    with open(paths['metadata'], 'w') as f:
+    metadata_path = os.path.join(os.path.dirname(paths['model']), 'metadata.json')
+    with open(metadata_path, 'w') as f:
         json.dump(metadata, f)
     
-    return paths
+    return {
+        'model': paths['model'],
+        'scaler': paths['scaler'],
+        'metadata': metadata_path
+    }
 
 def load_model(symbol):
     """Load model, scaler and metadata for a specific symbol"""
-    paths = Config.get_model_paths(symbol)
+    # Changed from get_model_paths to get_model_path to match config.py method name
+    paths = Config.get_model_path(symbol)
     
     # Check if files exist
     if not os.path.exists(paths['model']) or not os.path.exists(paths['scaler']):
         return None, None, None
     
     # Load metadata if available
+    metadata_path = os.path.join(os.path.dirname(paths['model']), 'metadata.json')
     metadata = None
-    if os.path.exists(paths['metadata']):
-        with open(paths['metadata'], 'r') as f:
+    if os.path.exists(metadata_path):
+        with open(metadata_path, 'r') as f:
             metadata = json.load(f)
     
     # Determine input size

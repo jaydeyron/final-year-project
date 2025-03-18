@@ -164,7 +164,7 @@ NIFTY_STOCKS = [
         "symbol": "TCS",
         "tradingViewSymbol": "BSE:TCS",
         "bseSymbol": "TCS.BO",
-        "startDate": "2004-08-25"
+        "startDate": "2024-08-25"
     }
 ]
 
@@ -190,6 +190,7 @@ async def serve_spa(request: Request, full_path: str):
 
 class ModelRequest(BaseModel):
     symbol: str
+    start_date: str = None  # Optional start date
 
 # Map displaySymbol to bseSymbol
 def map_symbol_to_bse(symbol):
@@ -228,15 +229,26 @@ async def train_model(request: ModelRequest):
         bse_symbol, display_symbol = map_symbol_to_bse(input_symbol)
         
         logger.info(f"Starting training for display:{display_symbol} using data:{bse_symbol}")
+        
+        # Set up the command with optional start date
+        cmd = [
+            sys.executable,
+            'tft/train.py',
+            '--symbol', bse_symbol,
+            '--display-symbol', display_symbol,
+        ]
+        
+        # Add start date if provided
+        if request.start_date:
+            cmd.extend(['--start-date', request.start_date])
+            logger.info(f"Using custom start date: {request.start_date}")
+        
         global training_progress
         async with training_lock:
             training_progress = 0
         
         process = await asyncio.create_subprocess_exec(
-            sys.executable,
-            'tft/train.py',
-            '--symbol', bse_symbol,
-            '--display-symbol', display_symbol,
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -244,7 +256,8 @@ async def train_model(request: ModelRequest):
         stdout, stderr = await process.communicate()
         if process.returncode == 0:
             async with training_lock:
-                training_progress = 100
+                app_state.training_progress = 100
+                logger.info(f"Training completed. Set training_progress to {app_state.training_progress}")
             return {"status": "success"}
         else:
             raise HTTPException(status_code=500, detail=stderr.decode())
@@ -283,8 +296,41 @@ async def predict(request: ModelRequest):
 
 @app.get('/progress')
 async def get_progress():
-    return {"progress": training_progress}
+    progress = app_state.training_progress
+    except Exception as e:
+    logger.info(f"Progress check: current value is {progress}")
+    return {"progress": progress}
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)  # Explicitly set port to 8000
+    # Check for progress file from trainer
+    progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
+    try:
+        if os.path.exists(progress_file):
+            with open(progress_file, 'r') as f:
+                data = json.load(f)
+                progress = data.get('progress', app_state.training_progress)
+                logger.info(f"Progress from file: {progress}%")
+                return {"progress": progress}
+    except Exception as e:
+        logger.error(f"Error reading progress file: {e}")
+    
+    # Return the global progress as fallback
+    logger.info(f"Using global progress: {app_state.training_progress}%")
+    return {"progress": app_state.training_progress}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # Explicitly set port to 8000
+async def get_progress():
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # Explicitly set port to 8000
+
+if __name__ == "__main__":
+    import uvicorn
+    logger.info(f"Progress check: current value is {training_progress}")
+    return {"progress": training_progress}
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get('/progress')
+        logger.error(f"Prediction error: {str(e)}")
