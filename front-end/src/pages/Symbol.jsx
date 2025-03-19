@@ -23,7 +23,7 @@ function Symbol() {
       <TradingViewChart symbol={tradingViewSymbol} />
       <TradingViewCompanyProfile symbol={tradingViewSymbol} />
       <TradingViewFinancials symbol={tradingViewSymbol} />
-      <TradingViewTechnicalAnalysis symbol={tradingViewSymbol} />
+      {/* <TradingViewTechnicalAnalysis symbol={tradingViewSymbol} /> */}
       <TFTModel symbol={symbolName} /> 
     </div>
   );

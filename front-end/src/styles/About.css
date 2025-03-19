@@ -53,3 +53,8 @@
   position: absolute;
   left: 0;
 }
+
+/* This file can be kept minimal as we're using styled-jsx for component-specific styling */
+.about-page {
+  min-height: calc(100vh - 80px); /* Adjust based on your navbar height */
+}
