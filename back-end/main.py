@@ -291,6 +291,77 @@ async def predict(request: ModelRequest):
             cmd.extend(['--model-symbol', model_override])
         
         logger.info(f"Predicting for display:{display_symbol} using data:{bse_symbol}")
+        
+        # Set up environment with explicit PYTHONIOENCODING
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        # Log everything for debugging
+        stdout_content = stdout.decode().strip()
+        stderr_content = stderr.decode().strip() if stderr else ""
+        
+        if stderr_content:
+            logger.info(f"Prediction stderr output: {stderr_content}")
+        
+        logger.info(f"Raw prediction output: '{stdout_content}'")
+        
+        # Better error handling
+        if process.returncode != 0:
+            error_msg = stderr_content or "Unknown prediction error"
+            logger.error(f"Prediction process failed with code {process.returncode}: {error_msg}")
+            raise HTTPException(status_code=500, detail=error_msg)
+            
+        # More robust parsing - strip all whitespace and non-numeric content
+        try:
+            # Filter the output to only get numeric characters plus decimal point
+            import re
+            numeric_part = re.search(r'\d+\.\d+', stdout_content)
+            if numeric_part:
+                prediction = float(numeric_part.group(0))
+                logger.info(f"Successfully parsed prediction: {prediction}")
+                return {"prediction": prediction}
+            else:
+                logger.error(f"No numeric value found in output: '{stdout_content}'")
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Could not find prediction value in output"
+                )
+        except Exception as e:
+            logger.error(f"Error parsing prediction output: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to parse prediction: {str(e)}"
+            )
+            
+    except Exception as e:
+        logger.error(f"Prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post('/last-close')
+async def get_last_closing_price(request: ModelRequest):
+    """Get the last closing price for a specific symbol"""
+    try:
+        # Map the symbol to BSE symbol
+        input_symbol = request.symbol
+        bse_symbol, display_symbol = map_symbol_to_bse(input_symbol)
+        
+        # Use the data_loader functionality to get recent data for the symbol
+        cmd = [
+            sys.executable,
+            'tft/get_last_price.py',
+            '--symbol', bse_symbol
+        ]
+        
+        logger.info(f"Fetching last close price for {bse_symbol}")
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -298,15 +369,21 @@ async def predict(request: ModelRequest):
         )
         
         stdout, stderr = await process.communicate()
-        if process.returncode == 0:
-            prediction = float(stdout.decode().strip())
-            return {"prediction": prediction}
-        else:
-            raise HTTPException(status_code=500, detail=stderr.decode())
+        
+        if process.returncode != 0:
+            logger.error(f"Error fetching last close: {stderr.decode()}")
+            raise HTTPException(status_code=500, detail="Failed to fetch last closing price")
             
+        last_close = float(stdout.decode().strip())
+        logger.info(f"Last close for {bse_symbol}: {last_close}")
+        
+        return {"symbol": display_symbol, "lastClose": last_close}
+        
     except Exception as e:
-        logger.error(f"Prediction error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching last close: {str(e)}")
+        # Return a reasonable fallback if we can't get the actual value
+        # In a production app, you'd want to handle this more gracefully
+        return {"symbol": input_symbol, "lastClose": None}
 
 @app.get('/progress')
 async def get_progress():
