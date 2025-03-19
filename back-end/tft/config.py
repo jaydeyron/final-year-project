@@ -9,6 +9,9 @@ class Config:
     NUM_HEADS = 4
     DROPOUT = 0.1
     
+    # Price constraint parameters
+    MAX_CHANGE_PERCENT = 0.05  # 5% max change from last closing price
+    
     # Training parameters
     BATCH_SIZE = 32
     EPOCHS = 100

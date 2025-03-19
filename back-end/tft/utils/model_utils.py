@@ -64,14 +64,15 @@ def load_model(symbol):
     # Determine input size
     input_size = metadata.get('input_size', len(Config.FEATURES)) if metadata else len(Config.FEATURES)
     
-    # Load model
+    # Load model with price constraint
     model = TemporalFusionTransformer(
         input_size, 
         Config.HIDDEN_SIZE,
         1,
         Config.NUM_LAYERS,
         Config.NUM_HEADS,
-        Config.DROPOUT
+        Config.DROPOUT,
+        max_change_percent=Config.MAX_CHANGE_PERCENT
     )
     model.load_state_dict(torch.load(paths['model']))
     model.eval()

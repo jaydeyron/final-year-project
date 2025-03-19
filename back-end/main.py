@@ -191,6 +191,7 @@ async def serve_spa(request: Request, full_path: str):
 class ModelRequest(BaseModel):
     symbol: str
     start_date: str = None  # Optional start date
+    model_symbol: str = None  # Optional model override (e.g., "TCS")
 
 # Map displaySymbol to bseSymbol
 def map_symbol_to_bse(symbol):
@@ -256,8 +257,8 @@ async def train_model(request: ModelRequest):
         stdout, stderr = await process.communicate()
         if process.returncode == 0:
             async with training_lock:
-                app_state.training_progress = 100
-                logger.info(f"Training completed. Set training_progress to {app_state.training_progress}")
+                training_progress = 100
+                logger.info(f"Training completed. Set training_progress to {training_progress}")
             return {"status": "success"}
         else:
             raise HTTPException(status_code=500, detail=stderr.decode())
@@ -273,12 +274,25 @@ async def predict(request: ModelRequest):
         input_symbol = request.symbol
         bse_symbol, display_symbol = map_symbol_to_bse(input_symbol)
         
-        logger.info(f"Predicting for display:{display_symbol} using data:{bse_symbol}")
-        process = await asyncio.create_subprocess_exec(
+        # Allow overriding which model to use
+        model_override = request.model_symbol
+        if model_override:
+            logger.info(f"Using {model_override} model for prediction")
+        
+        cmd = [
             sys.executable,
             'tft/predict.py',
             '--symbol', bse_symbol,
             '--display-symbol', display_symbol,
+        ]
+        
+        # Add model override if specified
+        if model_override:
+            cmd.extend(['--model-symbol', model_override])
+        
+        logger.info(f"Predicting for display:{display_symbol} using data:{bse_symbol}")
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -296,41 +310,22 @@ async def predict(request: ModelRequest):
 
 @app.get('/progress')
 async def get_progress():
-    progress = app_state.training_progress
-    except Exception as e:
-    logger.info(f"Progress check: current value is {progress}")
-    return {"progress": progress}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # Explicitly set port to 8000
-    # Check for progress file from trainer
-    progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
     try:
+        # Check for progress file from trainer
+        progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
         if os.path.exists(progress_file):
             with open(progress_file, 'r') as f:
                 data = json.load(f)
-                progress = data.get('progress', app_state.training_progress)
+                progress = data.get('progress', training_progress)
                 logger.info(f"Progress from file: {progress}%")
                 return {"progress": progress}
     except Exception as e:
         logger.error(f"Error reading progress file: {e}")
     
     # Return the global progress as fallback
-    logger.info(f"Using global progress: {app_state.training_progress}%")
-    return {"progress": app_state.training_progress}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # Explicitly set port to 8000
-async def get_progress():
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # Explicitly set port to 8000
-
-if __name__ == "__main__":
-    import uvicorn
-    logger.info(f"Progress check: current value is {training_progress}")
+    logger.info(f"Using global progress: {training_progress}%")
     return {"progress": training_progress}
-        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get('/progress')
-        logger.error(f"Prediction error: {str(e)}")
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # Explicitly set port to 8000

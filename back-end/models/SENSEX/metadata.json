@@ -1,0 +1,1 @@
+{"symbol": "SENSEX", "input_size": 10, "last_trained": "2025-03-19T11:24:53.016616", "epochs": 100, "data_start_date": "2024-01-01", "data_end_date": "2025-03-19", "symbol_name": "SENSEX", "bse_symbol": "^BSESN", "training_completed": "2025-03-19T11:24:53.003438", "data_points": 298}

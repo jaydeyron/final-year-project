@@ -82,7 +82,7 @@ def main():
         
         input_size = xs.shape[2]
         
-        # Initialize or load the model
+        # Initialize or load the model with price constraint
         if args.update:
             print("Loading existing model for updating...")
             model, _, metadata = load_model(save_symbol)
@@ -109,7 +109,8 @@ def main():
                 1, 
                 Config.NUM_LAYERS, 
                 Config.NUM_HEADS, 
-                Config.DROPOUT
+                Config.DROPOUT,
+                max_change_percent=Config.MAX_CHANGE_PERCENT
             )
             total_epochs = args.epochs
 

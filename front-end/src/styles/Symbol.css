@@ -4,6 +4,28 @@
   padding: 20px 40px;
 }
 
+.side-by-side-container {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.side-by-side-item {
+  flex: 1;
+  width: 50%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 500px;
+}
+
+.side-by-side-item .tradingview-widget-container {
+  height: 100%;
+  margin-bottom: 0;
+}
+
 .tradingview-widget-container {
   margin-bottom: 20px;
   border-radius: 8px;
@@ -38,168 +60,3 @@
   width: 100%;
   box-sizing: border-box;
 }
-
-.tft-widget {
-  padding: 30px;  /* Increased padding */
-  background: #1a1c23;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  color: #fff;
-  height: 500px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.tft-widget h2 {
-  margin: 0 0 20px 0;
-  font-size: 1.2em;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.tft-content {
-  height: calc(100% - 40px);
-  overflow-y: auto;
-}
-
-/* Replace .tft-actions with .tft-actions-vertical */
-.tft-actions-vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;  /* Reduced gap to bring elements closer */
-  margin-bottom: 20px;
-  padding: 0;  /* Removed side padding for left alignment */
-}
-
-/* Replace .tft-action-column with .tft-action-block */
-.tft-action-block {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;  /* Left align the button */
-}
-
-.predict-button {
-  background: #2962ff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1em;
-  transition: background-color 0.2s;
-  width: auto;  /* Button only as wide as needed */
-  max-width: none;
-  margin: 0;  /* Remove auto margin */
-}
-
-.predict-button:hover {
-  background: #1e50e2;
-}
-
-.predict-button:disabled {
-  background: #1a1c23;
-  cursor: not-allowed;
-}
-
-.success-message {
-  margin-top: 20px;
-  padding: 10px;
-  background: rgba(46, 204, 113, 0.1);
-  border-radius: 4px;
-  color: #2ecc71;
-}
-
-.progress-bar-container {
-  margin: 20px 0;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  height: 20px;
-  position: relative;
-  overflow: hidden;
-}
-
-.progress-bar {
-  background: #2962ff;
-  height: 100%;
-  transition: width 0.3s ease;
-}
-
-.progress-bar-container span {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: white;
-  font-size: 0.9em;
-}
-
-.prediction-result {
-  margin-top: 20px;
-  padding: 20px;
-  background: rgba(41, 98, 255, 0.1);
-  border-radius: 4px;
-}
-
-.prediction-result h3 {
-  margin-top: 0;
-  font-size: 1.1em;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.predicted-value {
-  font-size: 2em;
-  color: #2962ff;
-  margin: 10px 0;
-}
-
-.error-message {
-  color: #ff4444;
-  margin-top: 20px;
-  padding: 10px;
-  background: rgba(255, 68, 68, 0.1);
-  border-radius: 4px;
-}
-
-/* Add a new container for progress that's between buttons */
-.progress-container {
-  width: 100%;
-  padding: 0 10px; /* Small padding for breathing room */
-}
-
-/* ...existing styles... */
-
-.custom-date-option {
-  margin-bottom: 15px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.custom-date-option label {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-  cursor: pointer;
-}
-
-.custom-date-option input[type="checkbox"] {
-  margin-right: 8px;
-}
-
-.date-input {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  padding: 8px;
-  border-radius: 4px;
-  margin-bottom: 10px;
-  width: 100%;
-  max-width: 200px;
-}
-
-.date-input:focus {
-  outline: none;
-  border-color: #2962ff;
-}
-
-/* ...existing styles... */

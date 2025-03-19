@@ -1,53 +1,121 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import math
 
-class TemporalFusionTransformer(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers, num_heads, dropout=0.3):
-        super().__init__()
-        self.hidden_size = hidden_size
-        self.num_heads = num_heads
+class PositionalEncoding(nn.Module):
+    """
+    Positional encoding for temporal data
+    """
+    def __init__(self, d_model, dropout=0.1, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
 
-        # Variable Selection Network
-        self.variable_selection = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.GELU(),
-            nn.Linear(hidden_size, input_size),
-            nn.Softmax(dim=-1)
-        )
-
-        # LSTM for temporal processing
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-
-        # Multi-head attention
-        self.attention = nn.MultiheadAttention(hidden_size, num_heads, dropout=dropout)
-
-        # Gating mechanism
-        self.gate = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size),
-            nn.Sigmoid()
-        )
-
-        # Output layer
-        self.fc = nn.Linear(hidden_size, output_size)
-        self.dropout = nn.Dropout(dropout)
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
 
     def forward(self, x):
-        # Variable selection
-        variable_weights = self.variable_selection(x)
-        x = x * variable_weights
+        x = x + self.pe[:, :x.size(1), :]
+        return self.dropout(x)
 
-        # LSTM for temporal processing
-        lstm_out, _ = self.lstm(x)
-        lstm_out = self.dropout(lstm_out)
+class PriceConstraintLayer(nn.Module):
+    """
+    Custom layer to constrain predictions to be within a reasonable range
+    of the last observed price (typically ±5%)
+    """
+    def __init__(self, max_change_percent=0.05):
+        super(PriceConstraintLayer, self).__init__()
+        self.max_change_percent = max_change_percent
+        
+    def forward(self, x, last_close):
+        # Calculate allowable price range
+        min_price = last_close * (1 - self.max_change_percent)
+        max_price = last_close * (1 + self.max_change_percent)
+        
+        # Constrain prediction to be within the range
+        constrained = torch.clamp(x, min_price, max_price)
+        
+        return constrained
 
-        # Multi-head attention
-        attn_output, _ = self.attention(lstm_out, lstm_out, lstm_out)
-        attn_output = self.dropout(attn_output)
-
-        # Gating mechanism
-        gate_output = self.gate(attn_output)
-        gated_output = gate_output * attn_output
-
-        # Final output
-        output = self.fc(gated_output[:, -1, :])
+class TemporalFusionTransformer(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=3, num_heads=4, dropout=0.1, 
+                 max_change_percent=0.05):
+        super(TemporalFusionTransformer, self).__init__()
+        
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.max_change_percent = max_change_percent
+        
+        # Feature processing layers
+        self.feature_layer = nn.Linear(input_size, hidden_size)
+        self.positional_encoding = PositionalEncoding(hidden_size, dropout)
+        
+        # Temporal processing with LSTM
+        self.lstm = nn.LSTM(
+            input_size=hidden_size, 
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0
+        )
+        
+        # Self-attention transformer layer for variable selection
+        self.transformer_encoder_layer = nn.TransformerEncoderLayer(
+            d_model=hidden_size,
+            nhead=num_heads,
+            dropout=dropout,
+            dim_feedforward=hidden_size * 4,
+            batch_first=True
+        )
+        self.transformer_encoder = nn.TransformerEncoder(
+            self.transformer_encoder_layer, 
+            num_layers=num_layers
+        )
+        
+        # Output layers
+        self.pre_output = nn.Linear(hidden_size, hidden_size)
+        self.output_layer = nn.Linear(hidden_size, output_size)
+        
+        # Constrained output
+        self.price_constraint = PriceConstraintLayer(max_change_percent)
+        
+    def extract_last_close_price(self, x):
+        # Extract last close price from each sequence (assuming close price is at index 3)
+        # Shape: [batch_size, seq_len, features] -> [batch_size, 1]
+        return x[:, -1, 3:4]  # Last timestep's close price
+        
+    def forward(self, x, apply_constraint=False):
+        # x shape: [batch_size, sequence_length, input_size]
+        batch_size, seq_len, _ = x.shape
+        
+        # Store last close price for constraint
+        last_close = self.extract_last_close_price(x)
+        
+        # Feature transformation
+        x = self.feature_layer(x)
+        x = self.positional_encoding(x)
+        
+        # Temporal processing
+        x, _ = self.lstm(x)
+        
+        # Self-attention mechanism
+        x = self.transformer_encoder(x)
+        
+        # Take the last output for prediction
+        x = x[:, -1, :]
+        
+        # Output layers with residual connection
+        x = F.relu(self.pre_output(x)) + x
+        output = self.output_layer(x)
+        
+        # Apply price constraint if requested
+        if apply_constraint:
+            output = self.price_constraint(output, last_close)
+        
         return output
