@@ -172,10 +172,11 @@ NIFTY_STOCKS = [
 app.add_middleware(
     CORSMiddleware,
     # During development, frontend runs on 5173; in production everything is on 8000
-    allow_origins=["http://localhost:5173", "http://localhost:8000"],
+    allow_origins=["http://localhost:5173", "http://localhost:8000", "*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    max_age=86400,
 )
 
 # Serve static assets (CSS, JS, images)

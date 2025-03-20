@@ -117,13 +117,13 @@ function TFTModel({ symbol }) {
     setStrikeOptions(strikes);
     
     if (percentChange > 1) {
-      return "Strong bullish outlook. Consider Buy Call Option (CE) or selling Put Option (PE).";
+      return "Strong bullish outlook. Consider buying Call Option (CE) or selling Put Option (PE).";
     } else if (percentChange > 0) {
-      return "Slightly bullish. Consider Buy Call Option (CE) with caution.";
+      return "Slightly bullish. Consider buying Call Option (CE) with caution.";
     } else if (percentChange < -1) {
-      return "Strong bearish outlook. Consider Buy Put Option (PE) or selling Call Option (CE).";
+      return "Strong bearish outlook. Consider buying Put Option (PE) or selling Call Option (CE).";
     } else {
-      return "Slightly bearish. Consider Buy Put Option (PE) with caution.";
+      return "Slightly bearish. Consider buying Put Option (PE) with caution.";
     }
   };
 
