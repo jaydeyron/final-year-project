@@ -1,0 +1,14 @@
+{
+  "input_size": 10,
+  "hidden_size": 128,
+  "epochs": 100,
+  "timestamp": "2025-03-21T23:50:12.157643",
+  "symbol": "SBIN",
+  "clean_symbol": "SBIN",
+  "data_start_date": "2024-02-01",
+  "data_end_date": "2025-03-21",
+  "symbol_name": "SBIN",
+  "bse_symbol": "SBIN.BO",
+  "training_completed": "2025-03-21T23:50:12.137942",
+  "data_points": 278
+}

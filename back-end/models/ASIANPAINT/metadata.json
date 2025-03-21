@@ -1,0 +1,14 @@
+{
+  "input_size": 10,
+  "hidden_size": 128,
+  "epochs": 100,
+  "timestamp": "2025-03-21T23:11:41.787803",
+  "symbol": "ASIANPAINT",
+  "clean_symbol": "ASIANPAINT",
+  "data_start_date": "2024-01-19",
+  "data_end_date": "2025-03-21",
+  "symbol_name": "Asian Paints Limited",
+  "bse_symbol": "ASIANPAINT.BO",
+  "training_completed": "2025-03-21T23:11:41.760215",
+  "data_points": 285
+}

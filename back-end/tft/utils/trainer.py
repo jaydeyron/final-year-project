@@ -1,34 +1,70 @@
 import torch
-import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch.nn as nn
+import time
+import os
+import json
+from config import Config
 
 class Trainer:
-    def __init__(self, model, train_loader, device, learning_rate):
+    def __init__(self, model, dataloader, device, learning_rate=0.001):
         self.model = model.to(device)
-        self.train_loader = train_loader
+        self.dataloader = dataloader
         self.device = device
-        self.criterion = nn.SmoothL1Loss()
         self.optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=5)
-
+        self.criterion = nn.MSELoss()
+        self.progress_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'progress.json')
+        
+    def update_progress(self, progress):
+        """Write progress to a file for the API to read"""
+        try:
+            with open(self.progress_file, 'w') as f:
+                json.dump({"progress": progress}, f)
+                f.flush()
+            print(f"Updated progress: {progress}%")
+        except Exception as e:
+            print(f"Failed to update progress: {e}")
+            
     def train(self, epochs):
-        print(f"\nStarting training for {epochs} epochs...")
+        start_time = time.time()
+        self.model.train()
+        total_steps = epochs * len(self.dataloader)
+        current_step = 0
+        
+        # Initialize progress file
+        self.update_progress(0)
+        
         for epoch in range(epochs):
-            self.model.train()
-            total_loss = 0
-            for batch_data, batch_targets in self.train_loader:
-                batch_data, batch_targets = batch_data.to(self.device), batch_targets.to(self.device)
-
+            epoch_loss = 0
+            for batch_idx, (inputs, targets) in enumerate(self.dataloader):
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
+                
                 self.optimizer.zero_grad()
-                outputs = self.model(batch_data)
-                loss = self.criterion(outputs, batch_targets)
+                outputs = self.model(inputs)
+                loss = self.criterion(outputs, targets)
                 loss.backward()
                 self.optimizer.step()
-
-                total_loss += loss.item()
-
-            avg_loss = total_loss / len(self.train_loader)
-            self.scheduler.step(avg_loss)
-
-            print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.6f}")
+                
+                epoch_loss += loss.item()
+                current_step += 1
+                
+                # Calculate and update progress more frequently
+                progress = int((current_step / total_steps) * 100)
+                if batch_idx % 2 == 0 or batch_idx == len(self.dataloader) - 1:
+                    self.update_progress(progress)
+                    print(f"Epoch {epoch+1}/{epochs} | Batch {batch_idx+1}/{len(self.dataloader)} | "
+                          f"Progress: {progress}% | Loss: {loss.item():.6f}")
+                
+            avg_epoch_loss = epoch_loss / len(self.dataloader)
+            elapsed = time.time() - start_time
+            
+            # Update progress at the end of each epoch
+            progress = int(((epoch + 1) / epochs) * 100)
+            self.update_progress(progress)
+            
+            print(f"Epoch {epoch+1}/{epochs} completed | Avg Loss: {avg_epoch_loss:.6f} | "
+                  f"Time: {elapsed:.2f}s | Progress: {progress}%")
+        
+        # Ensure progress is set to 100% when training completes
+        self.update_progress(100)
+        print(f"Training completed in {time.time() - start_time:.2f} seconds")

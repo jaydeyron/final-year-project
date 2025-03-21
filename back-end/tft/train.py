@@ -11,36 +11,19 @@ from utils.model_utils import save_model, load_model
 from config import Config
 from models.tft_model import TemporalFusionTransformer
 
-# Import NIFTY_STOCKS from a shared module instead of defining it here
+# Import NIFTY_STOCKS from a shared module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
-    from shared.stock_data import NIFTY_STOCKS
+    from shared.stock_data import NIFTY_STOCKS, get_symbol_info
 except ImportError:
     # Fallback if shared module not available
     NIFTY_STOCKS = []
-
-def get_stock_info(symbol, display_symbol=None):
-    """Get stock information including start date"""
-    # Try to find by BSE symbol first
-    for stock in NIFTY_STOCKS:
-        if stock.get('bseSymbol') == symbol:
-            return stock
-
-    # Try to find by display symbol if provided
-    if display_symbol:
-        for stock in NIFTY_STOCKS:
-            if stock.get('symbol') == display_symbol:
-                return stock
     
-    # If not found, use defaults
-    return {
-        "startDate": "2000-01-01",  # Safe default
-        "symbol": display_symbol or symbol,
-        "bseSymbol": symbol
-    }
+    def get_symbol_info(symbol, field_name='symbol'):
+        return None
 
 def main():
-    # Update argument parser to accept more parameters
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Train TFT model for a specific stock')
     parser.add_argument('--symbol', type=str, required=True, help='BSE symbol for data fetching (e.g., "TCS.BO")')
     parser.add_argument('--display-symbol', type=str, help='Display symbol for model saving (e.g., "TCS")')
@@ -54,8 +37,8 @@ def main():
     save_symbol = args.display_symbol if args.display_symbol else args.symbol
     
     # Get stock info for correct dates and symbol handling
-    stock_info = get_stock_info(args.symbol, args.display_symbol)
-    print(f"Training model for {stock_info.get('name', args.symbol)} (symbol: {args.symbol})")
+    stock_info = get_symbol_info(args.symbol, 'bseSymbol') or {'startDate': '2000-01-01', 'symbol': save_symbol}
+    print(f"Training model for {stock_info.get('name', save_symbol)} (symbol: {args.symbol})")
     
     # Use provided start date or fall back to stock info
     start_date = args.start_date or stock_info.get('startDate', "2000-01-01")
@@ -64,12 +47,25 @@ def main():
     end_date = args.end_date or datetime.now().strftime('%Y-%m-%d')
     
     try:
+        # Ensure models directory exists
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        models_dir = os.path.join(backend_dir, 'models')
+        os.makedirs(models_dir, exist_ok=True)
+        
+        # Create progress.json file to track training progress
+        progress_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'progress.json')
+        with open(progress_file, 'w') as f:
+            json.dump({"progress": 0}, f)
+        
         # Fetch and preprocess data
         print(f"Fetching data from {start_date} to {end_date}...")
         data = fetch_data(args.symbol, start_date, end_date)
+        if data is None or len(data) < Config.SEQ_LENGTH * 2:  # Need enough data for sequences
+            raise ValueError(f"Insufficient data for symbol {args.symbol}. Need at least {Config.SEQ_LENGTH*2} data points.")
+            
         print(f"Fetched {len(data)} data points")
         
-        # ...remaining code stays the same...
+        # Preprocess data
         scaled_data, scaler = preprocess_data(data)
         xs, ys = create_sequences(scaled_data, Config.SEQ_LENGTH)
         
@@ -95,7 +91,8 @@ def main():
                     1, 
                     Config.NUM_LAYERS, 
                     Config.NUM_HEADS, 
-                    Config.DROPOUT
+                    Config.DROPOUT,
+                    max_change_percent=Config.MAX_CHANGE_PERCENT
                 )
                 total_epochs = args.epochs
             else:
@@ -142,8 +139,18 @@ def main():
         print(f"Model saved to {saved_paths['model']}")
         print(f"Training completed successfully for {save_symbol}")
         
+        # Update progress to 100% when done
+        with open(progress_file, 'w') as f:
+            json.dump({"progress": 100}, f)
+        
     except Exception as e:
         print(f"Error during training: {str(e)}")
+        # Update progress file to show error
+        try:
+            with open(progress_file, 'w') as f:
+                json.dump({"progress": -1, "error": str(e)}, f)
+        except:
+            pass
         raise e
 
 if __name__ == "__main__":

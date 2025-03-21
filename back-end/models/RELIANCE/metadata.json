@@ -1,0 +1,14 @@
+{
+  "input_size": 10,
+  "hidden_size": 128,
+  "epochs": 50,
+  "timestamp": "2025-03-20T11:50:25.310162",
+  "symbol": "RELIANCE",
+  "clean_symbol": "RELIANCE",
+  "data_start_date": "2000-01-01",
+  "data_end_date": "2025-03-20",
+  "symbol_name": "RELIANCE",
+  "bse_symbol": "RELIANCE.BO",
+  "training_completed": "2025-03-20T11:50:25.276591",
+  "data_points": 6091
+}

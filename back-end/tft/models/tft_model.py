@@ -26,7 +26,7 @@ class PositionalEncoding(nn.Module):
 class PriceConstraintLayer(nn.Module):
     """
     Custom layer to constrain predictions to be within a reasonable range
-    of the last observed price (typically ±5%)
+    of the last observed price
     """
     def __init__(self, max_change_percent=0.05):
         super(PriceConstraintLayer, self).__init__()
@@ -37,10 +37,17 @@ class PriceConstraintLayer(nn.Module):
         min_price = last_close * (1 - self.max_change_percent)
         max_price = last_close * (1 + self.max_change_percent)
         
-        # Constrain prediction to be within the range
-        constrained = torch.clamp(x, min_price, max_price)
+        # Instead of hard clamping, use a soft constraint
+        # This adds a penalty but allows exceeding the threshold if the model is confident
+        x_constrained = x.clone()
+        above_max = x > max_price
+        below_min = x < min_price
         
-        return constrained
+        # Apply soft constraints
+        x_constrained[above_max] = max_price + 0.2 * (x[above_max] - max_price)
+        x_constrained[below_min] = min_price + 0.2 * (x[below_min] - min_price)
+        
+        return x_constrained
 
 class TemporalFusionTransformer(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers=3, num_heads=4, dropout=0.1, 
@@ -114,7 +121,8 @@ class TemporalFusionTransformer(nn.Module):
         x = F.relu(self.pre_output(x)) + x
         output = self.output_layer(x)
         
-        # Apply price constraint if requested
+        # Apply price constraint only if explicitly requested
+        # Set default to False to see raw model predictions
         if apply_constraint:
             output = self.price_constraint(output, last_close)
         

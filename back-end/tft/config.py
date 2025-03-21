@@ -4,33 +4,35 @@ import torch  # Import the torch library
 class Config:
     # Model parameters
     INPUT_SIZE = 10  # Number of features in your data
-    HIDDEN_SIZE = 64
+    HIDDEN_SIZE = 128  # Changed from 64 to 128 to match the saved model
     NUM_LAYERS = 3
-    NUM_HEADS = 4
-    DROPOUT = 0.1
+    NUM_HEADS = 8  # Using 8 heads (multiple of 64)
+    DROPOUT = 0.1  # Reduced from previous value to allow more flexibility
     
     # Price constraint parameters
-    MAX_CHANGE_PERCENT = 0.05  # 5% max change from last closing price
+    MAX_CHANGE_PERCENT = 0.10  # Increased to 10% to allow more varied predictions
     
     # Training parameters
     BATCH_SIZE = 32
-    EPOCHS = 100
+    EPOCHS = 100  # Increased to ensure better learning
     LEARNING_RATE = 0.001
     SEQ_LENGTH = 60  # 60 days of historical data
     
     # Features for the model
     FEATURES = [
         'Open', 'High', 'Low', 'Close', 
-        'Volume', 'MA_10', 'RSI', 'MACD',
-        'Upper_Band', 'Lower_Band'
+        'Volume', 'EMA10', 'EMA30', 'RSI', 'MACD', 'MACD_Signal'
     ]
     
     # Device configuration
     DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    # File paths
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    MODEL_DIR = os.path.join(BASE_DIR, 'models')
+    # File paths - Using absolute paths to backend/models
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # /Users/jay/Documents/GitHub/final-year-project/back-end
+    MODEL_DIR = os.path.join(BASE_DIR, 'models')  # /Users/jay/Documents/GitHub/final-year-project/back-end/models
+    
+    # Ensure model directory exists
+    os.makedirs(MODEL_DIR, exist_ok=True)
     
     @classmethod
     def get_symbol_dir(cls, symbol):
@@ -51,8 +53,10 @@ class Config:
     def get_model_path(cls, symbol):
         """Get paths for model and scaler files"""
         # This method name is used in model_utils.py
-        base_dir = os.path.join(cls.MODEL_DIR, symbol.replace('^', 'SENSEX').replace('.BO', ''))
+        clean_symbol = symbol.replace('^', 'SENSEX').replace('.BO', '')
+        base_dir = os.path.join(cls.MODEL_DIR, clean_symbol)
         os.makedirs(base_dir, exist_ok=True)
+        
         return {
             'model': os.path.join(base_dir, 'model.pth'),
             'scaler': os.path.join(base_dir, 'scaler.json')

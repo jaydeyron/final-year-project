@@ -1,7 +1,8 @@
+import time
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import os
@@ -9,6 +10,7 @@ import sys
 import logging
 import asyncio
 import json
+import re  # Add regex module for better pattern matching
 
 # Load environment variables
 load_dotenv()
@@ -168,10 +170,9 @@ NIFTY_STOCKS = [
     }
 ]
 
-# CORS Middleware - only needed during development
+# CORS Middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    # During development, frontend runs on 5173; in production everything is on 8000
     allow_origins=["http://localhost:5173", "http://localhost:8000", "*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -179,16 +180,7 @@ app.add_middleware(
     max_age=86400,
 )
 
-# Serve static assets (CSS, JS, images)
-app.mount("/assets", StaticFiles(directory="../front-end/dist/assets"), name="assets")
-
-# Handle client-side routing - must be before static file mounting
-@app.get("/{full_path:path}")
-async def serve_spa(request: Request, full_path: str):
-    if (full_path.startswith("assets/")):
-        return None  # Let the static files handler deal with assets
-    return FileResponse("../front-end/dist/index.html")
-
+# Define model request schema
 class ModelRequest(BaseModel):
     symbol: str
     start_date: str = None  # Optional start date
@@ -223,6 +215,77 @@ def map_symbol_to_bse(symbol):
     bse_symbol = f"{display_symbol}.BO" if not symbol.endswith(".BO") else symbol
     return bse_symbol, display_symbol
 
+# API endpoints - define first before static routes
+@app.get('/progress')
+async def get_progress():
+    from fastapi.responses import JSONResponse
+    
+    try:
+        # Initialize with a default response
+        response_data = {"progress": training_progress}
+        
+        # Get path to progress file
+        progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
+        
+        # Check if file exists
+        if os.path.exists(progress_file):
+            try:
+                # Check file age
+                file_age = time.time() - os.path.getmtime(progress_file)
+                if file_age > 60:
+                    logger.warning(f"Progress file is {file_age:.1f} seconds old")
+                
+                # Read and parse file with robust error handling
+                with open(progress_file, 'r') as f:
+                    file_content = f.read().strip()
+                    
+                if file_content:  # Only try to parse if file has content
+                    try:
+                        data = json.loads(file_content)
+                        # Ensure progress is a number (or can be converted to one)
+                        if 'progress' in data:
+                            try:
+                                progress_value = int(float(data['progress']))
+                                response_data["progress"] = progress_value
+                            except (ValueError, TypeError):
+                                logger.warning(f"Invalid progress value: {data['progress']}")
+                        
+                        # Include any error message
+                        if 'error' in data:
+                            response_data["error"] = str(data['error'])
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse progress file: {str(e)}")
+            except Exception as e:
+                logger.error(f"Error reading progress file: {str(e)}")
+        else:
+            logger.info("Progress file not found, using global progress value")
+    except Exception as e:
+        logger.error(f"Error in progress endpoint: {str(e)}")
+        # On any error, return a safe default
+        response_data = {"progress": 0}
+    
+    # Return with explicit no-cache headers
+    headers = {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache"
+    }
+    
+    # Log the response we're sending
+    logger.info(f"Sending progress response: {response_data}")
+    
+    return JSONResponse(content=response_data, headers=headers)
+
+@app.get('/api-test')
+async def api_test():
+    return JSONResponse(
+        content={"status": "ok", "message": "API is working correctly"},
+        headers={
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"
+        }
+    )
+
 @app.post('/train')
 async def train_model(request: ModelRequest):
     try:
@@ -231,6 +294,13 @@ async def train_model(request: ModelRequest):
         bse_symbol, display_symbol = map_symbol_to_bse(input_symbol)
         
         logger.info(f"Starting training for display:{display_symbol} using data:{bse_symbol}")
+        
+        # Initialize progress file to ensure it exists with clean state
+        progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
+        with open(progress_file, 'w') as f:
+            json.dump({"progress": 0}, f)
+            f.flush()
+            os.fsync(f.fileno())  # Force write to disk
         
         # Set up the command with optional start date
         cmd = [
@@ -245,24 +315,20 @@ async def train_model(request: ModelRequest):
             cmd.extend(['--start-date', request.start_date])
             logger.info(f"Using custom start date: {request.start_date}")
         
+        # Update global progress tracking
         global training_progress
         async with training_lock:
             training_progress = 0
         
+        # Execute the training process
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
         
-        stdout, stderr = await process.communicate()
-        if process.returncode == 0:
-            async with training_lock:
-                training_progress = 100
-                logger.info(f"Training completed. Set training_progress to {training_progress}")
-            return {"status": "success"}
-        else:
-            raise HTTPException(status_code=500, detail=stderr.decode())
+        # Don't wait for completion - return immediately so UI can start polling progress
+        return {"status": "training_started"}
             
     except Exception as e:
         logger.error(f"Training error: {str(e)}")
@@ -297,6 +363,7 @@ async def predict(request: ModelRequest):
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
         
+        # Run prediction process
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -306,45 +373,51 @@ async def predict(request: ModelRequest):
         
         stdout, stderr = await process.communicate()
         
-        # Log everything for debugging
-        stdout_content = stdout.decode().strip()
+        # Clean and log outputs
+        stdout_content = stdout.decode().strip() if stdout else ""
         stderr_content = stderr.decode().strip() if stderr else ""
         
-        if stderr_content:
-            logger.info(f"Prediction stderr output: {stderr_content}")
-        
         logger.info(f"Raw prediction output: '{stdout_content}'")
+        if stderr_content:
+            logger.info(f"Stderr output: {stderr_content}")
         
-        # Better error handling
+        # Check for process error
         if process.returncode != 0:
             error_msg = stderr_content or "Unknown prediction error"
             logger.error(f"Prediction process failed with code {process.returncode}: {error_msg}")
             raise HTTPException(status_code=500, detail=error_msg)
-            
-        # More robust parsing - strip all whitespace and non-numeric content
+        
+        # Try to directly convert to float
         try:
-            # Filter the output to only get numeric characters plus decimal point
-            import re
-            numeric_part = re.search(r'\d+\.\d+', stdout_content)
-            if numeric_part:
-                prediction = float(numeric_part.group(0))
-                logger.info(f"Successfully parsed prediction: {prediction}")
-                return {"prediction": prediction}
-            else:
-                logger.error(f"No numeric value found in output: '{stdout_content}'")
-                raise HTTPException(
-                    status_code=500, 
-                    detail=f"Could not find prediction value in output"
-                )
-        except Exception as e:
-            logger.error(f"Error parsing prediction output: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to parse prediction: {str(e)}"
-            )
+            # First check if the output is empty
+            if not stdout_content.strip():
+                raise ValueError("Empty output from prediction script")
+                
+            prediction = float(stdout_content)
+            logger.info(f"Successfully parsed prediction: {prediction}")
+            return {"prediction": prediction}
+        except ValueError:
+            # If direct conversion fails, try regex as fallback
+            logger.warning(f"Could not directly convert output to float: '{stdout_content}'")
+            clean_output = ''.join(c for c in stdout_content if c.isprintable())
             
+            # Try to match any decimal number
+            match = re.search(r'(\d+\.\d+)', clean_output)
+            if match:
+                prediction = float(match.group(1))
+                logger.info(f"Extracted prediction via regex: {prediction}")
+                return {"prediction": prediction}
+                
+            # No match found
+            logger.error(f"No valid prediction value found in output")
+            raise HTTPException(status_code=500, detail="Could not extract prediction from model output")
+                
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
         logger.error(f"Prediction error: {str(e)}")
+        # Ensure we return a proper JSON error
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/last-close')
@@ -375,34 +448,119 @@ async def get_last_closing_price(request: ModelRequest):
             logger.error(f"Error fetching last close: {stderr.decode()}")
             raise HTTPException(status_code=500, detail="Failed to fetch last closing price")
             
-        last_close = float(stdout.decode().strip())
-        logger.info(f"Last close for {bse_symbol}: {last_close}")
+        # Get clean output
+        stdout_content = stdout.decode().strip()
+        logger.info(f"Raw last close output: '{stdout_content}'")
         
-        return {"symbol": display_symbol, "lastClose": last_close}
-        
+        # Parse the result more robustly
+        try:
+            # Try to convert directly to float first
+            try:
+                last_close = float(stdout_content)
+                logger.info(f"Last close for {bse_symbol}: {last_close}")
+                return {"symbol": display_symbol, "lastClose": last_close}
+            except ValueError:
+                # If direct conversion fails, try regex
+                decimal_match = re.search(r'(\d+\.\d+)', stdout_content)
+                if decimal_match:
+                    last_close = float(decimal_match.group(0))
+                    logger.info(f"Last close for {bse_symbol}: {last_close}")
+                    return {"symbol": display_symbol, "lastClose": last_close}
+                    
+                # Try integer pattern as fallback
+                int_match = re.search(r'(\d+)', stdout_content)
+                if int_match:
+                    last_close = float(int_match.group(0))
+                    logger.info(f"Last close for {bse_symbol}: {last_close}")
+                    return {"symbol": display_symbol, "lastClose": last_close}
+                    
+                # If we reach here, couldn't parse the output
+                raise ValueError(f"Could not parse last close value from: {stdout_content}")
+        except Exception as e:
+            logger.error(f"Error parsing last close: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to parse last close price: {str(e)}")
+            
     except Exception as e:
         logger.error(f"Error fetching last close: {str(e)}")
         # Return a reasonable fallback if we can't get the actual value
-        # In a production app, you'd want to handle this more gracefully
         return {"symbol": input_symbol, "lastClose": None}
 
-@app.get('/progress')
-async def get_progress():
+# Add a debug endpoint to test model behavior
+@app.post('/debug-predict')
+async def debug_predict(request: ModelRequest):
+    """Get detailed diagnostic information about predictions"""
     try:
-        # Check for progress file from trainer
-        progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
-        if os.path.exists(progress_file):
-            with open(progress_file, 'r') as f:
-                data = json.load(f)
-                progress = data.get('progress', training_progress)
-                logger.info(f"Progress from file: {progress}%")
-                return {"progress": progress}
+        input_symbol = request.symbol
+        bse_symbol, display_symbol = map_symbol_to_bse(input_symbol)
+        
+        # Use debug flag for more information
+        cmd = [
+            sys.executable,
+            'tft/predict.py',
+            '--symbol', bse_symbol,
+            '--display-symbol', display_symbol,
+            '--debug',
+        ]
+        
+        # Set up environment with explicit PYTHONIOENCODING
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        
+        # Run prediction process
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        # Gather all debug info
+        stdout_content = stdout.decode().strip() if stdout else ""
+        stderr_content = stderr.decode().strip() if stderr else ""
+        
+        # Try to extract the prediction value
+        prediction = None
+        try:
+            # Look for a decimal number in stdout
+            match = re.search(r'(\d+\.\d+)', stdout_content)
+            if match:
+                prediction = float(match.group(1))
+        except Exception:
+            pass
+        
+        # Parse debug information
+        debug_info = {}
+        for line in stderr_content.split('\n'):
+            if line.startswith('DEBUG:'):
+                parts = line[6:].split(':')
+                if len(parts) >= 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip()
+                    debug_info[key] = value
+        
+        # Return detailed information
+        return {
+            "prediction": prediction,
+            "stdout": stdout_content,
+            "stderr": stderr_content,
+            "debug_info": debug_info
+        }
+            
     except Exception as e:
-        logger.error(f"Error reading progress file: {e}")
-    
-    # Return the global progress as fallback
-    logger.info(f"Using global progress: {training_progress}%")
-    return {"progress": training_progress}
+        logger.error(f"Debug prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Serve static assets (CSS, JS, images) - AFTER API routes
+@app.get('/assets/{filepath:path}')
+async def serve_static(filepath: str):
+    return FileResponse(f"../front-end/dist/assets/{filepath}")
+
+# Finally, the catch-all route for SPA
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    return FileResponse("../front-end/dist/index.html")
 
 if __name__ == "__main__":
     import uvicorn

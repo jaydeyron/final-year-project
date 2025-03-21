@@ -143,13 +143,12 @@ function TFTModel({ symbol }) {
         symbol: actualSymbol
       };
       
-      // Add start date if custom date is enabled
       if (useCustomDate && startDate) {
         requestBody.start_date = startDate;
         console.log(`Using custom start date: ${startDate}`);
       }
       
-      // Send only the display symbol - backend will map to BSE symbol
+      // Send training request
       console.log(`Sending training request to ${API_BASE_URL}/train`);
       const trainResponse = await fetch(`${API_BASE_URL}/train`, {
         method: 'POST',
@@ -159,54 +158,162 @@ function TFTModel({ symbol }) {
       console.log('Training response status:', trainResponse.status);
 
       if (!trainResponse.ok) {
-        const errorData = await trainResponse.json();
-        console.error('Training failed:', errorData);
-        throw new Error(errorData.detail || 'Training failed');
+        // Handle error response
+        try {
+          const contentType = trainResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await trainResponse.json();
+            throw new Error(errorData.detail || 'Training failed');
+          } else {
+            const errorText = await trainResponse.text();
+            console.error('Non-JSON error response:', errorText);
+            throw new Error(`Training failed with status: ${trainResponse.status}`);
+          }
+        } catch (parseError) {
+          throw new Error(`Training failed: ${parseError.message || 'Unknown error'}`);
+        }
       }
 
-      // Poll training progress
+      // Start progress polling with improved error handling
       console.log('Starting progress polling...');
+      let lastProgress = 0;
+      let stagnantCount = 0;
+      
       const progressInterval = setInterval(async () => {
         try {
-          console.log('Polling progress...');
-          const progressResponse = await fetch(`${API_BASE_URL}/progress`);
-          console.log('Progress response status:', progressResponse.status);
+          // Add timestamp to prevent caching - use a consistent API endpoint with complete URL
+          const timestamp = new Date().getTime();
+          const progressUrl = `http://localhost:8000/progress?_=${timestamp}`;
           
+          console.log(`Polling progress at ${new Date().toISOString()}`);
+          
+          const progressResponse = await fetch(progressUrl, {
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Accept': 'application/json'
+            }
+          });
+          
+          // Get the response content type
+          const contentType = progressResponse.headers.get('content-type');
+          
+          // Check if response is not OK
           if (!progressResponse.ok) {
-            console.error('Progress check failed:', progressResponse.status);
+            console.error(`Progress check failed: ${progressResponse.status}`);
+            stagnantCount++;
             return;
           }
           
-          const data = await progressResponse.json();
-          console.log('Progress data:', data);
-          setProgress(data.progress);
+          // Parse response based on content type
+          let progressData = null;
           
-          if (data.progress === 100) {
-            console.log('Training completed');
-            clearInterval(progressInterval);
-            setLoading(false);
+          // Only try to parse as JSON if the content type is json
+          if (contentType && contentType.includes('application/json')) {
+            const responseText = await progressResponse.text();
+            console.log('Progress response:', responseText);
+            
+            try {
+              progressData = JSON.parse(responseText);
+            } catch (jsonError) {
+              console.error('Error parsing JSON progress:', jsonError);
+              console.log('Invalid JSON response:', responseText);
+              throw new Error('Invalid JSON response from server');
+            }
+          } else {
+            const textResponse = await progressResponse.text();
+            console.warn('Unexpected content type:', contentType);
+            console.log('Raw response:', textResponse);
+            
+            // Try to extract progress from text
+            try {
+              // Look for something like: {"progress": 45}
+              const match = textResponse.match(/["']?progress["']?\s*:\s*(\d+)/i);
+              if (match && match[1]) {
+                progressData = { progress: parseInt(match[1]) };
+                console.log('Extracted progress from text:', progressData);
+              } else {
+                throw new Error('Could not extract progress value from response');
+              }
+            } catch (extractError) {
+              console.error('Failed to extract progress:', extractError);
+              throw new Error('Could not parse progress data');
+            }
+          }
+          
+          // Validate and update progress
+          if (progressData && typeof progressData.progress !== 'undefined') {
+            // Convert string progress to number if needed
+            const progressValue = typeof progressData.progress === 'string'
+              ? parseInt(progressData.progress)
+              : progressData.progress;
+              
+            // Only update if we got a valid number
+            if (!isNaN(progressValue)) {
+              console.log(`Progress update: ${progressValue}%`);
+              setProgress(progressValue);
+              
+              // Handle stagnation detection
+              if (progressValue === lastProgress) {
+                stagnantCount++;
+                console.log(`Progress stagnant at ${progressValue}% for ${stagnantCount} checks`);
+                
+                if (stagnantCount > 15 && progressValue < 100) {
+                  console.warn('Progress appears to be stuck');
+                }
+              } else {
+                stagnantCount = 0;
+                lastProgress = progressValue;
+              }
+              
+              // Error and completion detection
+              if (progressValue === -1 || progressData.error) {
+                console.error('Training error:', progressData.error);
+                clearInterval(progressInterval);
+                setLoading(false);
+                setError(progressData.error || 'Training failed');
+                return;
+              }
+              
+              if (progressValue >= 100) {
+                console.log('Training completed');
+                clearInterval(progressInterval);
+                setLoading(false);
+              }
+            } else {
+              console.warn('Invalid progress value:', progressData.progress);
+              stagnantCount++;
+            }
+          } else {
+            console.warn('Missing progress data in response');
+            stagnantCount++;
           }
         } catch (err) {
-          console.error('Error during progress check:', err);
-          clearInterval(progressInterval);
-          setLoading(false);
-          setError(err.message);
+          console.error('Error checking progress:', err);
+          stagnantCount++;
+          
+          if (stagnantCount > 5) {
+            clearInterval(progressInterval);
+            setLoading(false);
+            setError(`Failed to check training progress: ${err.message}`);
+          }
         }
-      }, 1000);
+      }, 2000); // Poll every 2 seconds
 
-      // Add a safety timeout to stop polling after 5 minutes
+      // Add a safety timeout to stop polling after 30 minutes
       setTimeout(() => {
-        clearInterval(progressInterval);
-        if (loading) {
-          console.log('Training timed out after 5 minutes');
-          setLoading(false);
-          setError('Training timed out. Check logs for details.');
+        if (progressInterval) {
+          clearInterval(progressInterval);
+          if (loading) {
+            setLoading(false);
+            setError('Training timed out. The model may still be training in the background.');
+          }
         }
-      }, 5 * 60 * 1000);
+      }, 30 * 60 * 1000); // 30 minutes
 
     } catch (err) {
       console.error('Error in handleTrain:', err);
-      setError(err.message);
+      setError(err.message || 'Unknown training error');
       setLoading(false);
     }
   };
@@ -223,25 +330,64 @@ function TFTModel({ symbol }) {
       const actualSymbol = getActualSymbol(symbol);
       console.log('Starting prediction for symbol:', actualSymbol);
       
-      // Fetch last closing price first (or simultaneously)
-      const closePrice = await fetchLastClose(actualSymbol);
+      // Fetch last closing price first
+      let closePrice = null;
+      try {
+        const closeResponse = await fetch(`${API_BASE_URL}/last-close`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symbol: actualSymbol })
+        });
+        
+        // Check if response is JSON before parsing
+        const contentType = closeResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const closeData = await closeResponse.json();
+          closePrice = closeData.lastClose;
+        } else {
+          console.warn('Invalid JSON response from last-close endpoint');
+        }
+      } catch (closeErr) {
+        console.error('Error fetching last close:', closeErr);
+        // Continue with prediction even if last price fetch fails
+      }
       
-      // Send only the display symbol - backend will map to BSE symbol
+      // Send prediction request
       const predictResponse = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol: actualSymbol })
       });
-      console.log('Prediction response status:', predictResponse.status);
-
+      
       if (!predictResponse.ok) {
-        const errorData = await predictResponse.json();
-        console.error('Prediction failed:', errorData);
-        throw new Error(errorData.detail || 'Prediction failed');
+        // Check content type before trying to parse as JSON
+        const contentType = predictResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await predictResponse.json();
+          throw new Error(errorData.detail || 'Prediction failed');
+        } else {
+          // If not JSON, get text response
+          const errorText = await predictResponse.text();
+          console.error('Non-JSON error response:', errorText);
+          throw new Error(`Prediction failed with status: ${predictResponse.status}`);
+        }
+      }
+      
+      // Check content type before parsing
+      const contentType = predictResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await predictResponse.text();
+        console.error('Unexpected non-JSON response:', responseText);
+        throw new Error('Server returned invalid format. Expected JSON.');
       }
       
       const result = await predictResponse.json();
       console.log('Received prediction:', result);
+      
+      if (typeof result.prediction !== 'number') {
+        throw new Error(`Invalid prediction value: ${result.prediction}`);
+      }
+      
       setPrediction(result.prediction);
       
       // For demo purposes, if we couldn't get last close from API, use a mock value
@@ -255,7 +401,7 @@ function TFTModel({ symbol }) {
       setLoading(false);
     } catch (err) {
       console.error('Error in handlePredict:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to make prediction');
       setLoading(false);
     }
   };

@@ -1,0 +1,14 @@
+{
+  "input_size": 10,
+  "hidden_size": 128,
+  "epochs": 50,
+  "timestamp": "2025-03-21T23:08:59.002643",
+  "symbol": "BAJFINANCE",
+  "clean_symbol": "BAJFINANCE",
+  "data_start_date": "2024-07-17",
+  "data_end_date": "2025-03-21",
+  "symbol_name": "BAJFINANCE",
+  "bse_symbol": "BAJFINANCE.BO",
+  "training_completed": "2025-03-21T23:08:58.819485",
+  "data_points": 167
+}
