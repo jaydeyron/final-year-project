@@ -552,6 +552,62 @@ async def debug_predict(request: ModelRequest):
         logger.error(f"Debug prediction error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Add a more detailed debug endpoint to inspect model metadata and data structures
+@app.get('/debug-model/{symbol}')
+async def debug_model(symbol: str):
+    """Endpoint to inspect model data for debugging"""
+    try:
+        # Import needed functions
+        from tft.utils.model_utils import load_model
+        from tft.utils.data_loader import fetch_data
+        
+        # Clean symbol
+        clean_symbol = symbol
+        if symbol.endswith('.BO'):
+            clean_symbol = symbol[:-3]
+        
+        # Load model info
+        model, scaler_params, metadata = load_model(clean_symbol)
+        
+        # Check model structure
+        model_info = {
+            "model_exists": model is not None,
+            "input_size": metadata.get("input_size") if metadata else "unknown",
+            "hidden_size": metadata.get("hidden_size") if metadata else "unknown", 
+            "scaler_params_type": str(type(scaler_params)),
+            "mean_length": len(scaler_params.get("mean_", [])) if isinstance(scaler_params, dict) else 0,
+            "scale_length": len(scaler_params.get("scale_", [])) if isinstance(scaler_params, dict) else 0,
+            "metadata": metadata
+        }
+        
+        # Get recent data shape
+        bse_symbol, _ = map_symbol_to_bse(symbol)
+        try:
+            data = fetch_data(bse_symbol, days=30)
+            data_info = {
+                "data_found": data is not None,
+                "data_length": len(data) if data is not None else 0,
+                "columns": list(data.columns) if data is not None else [],
+                "last_close": float(data["Close"].iloc[-1]) if data is not None else None
+            }
+        except Exception as data_err:
+            data_info = {
+                "data_error": str(data_err)
+            }
+        
+        return {
+            "symbol": symbol,
+            "clean_symbol": clean_symbol,
+            "bse_symbol": bse_symbol,
+            "model_info": model_info,
+            "data_info": data_info
+        }
+    except Exception as e:
+        logger.error(f"Debug model error: {str(e)}")
+        return {
+            "error": str(e)
+        }
+
 # Serve static assets (CSS, JS, images) - AFTER API routes
 @app.get('/assets/{filepath:path}')
 async def serve_static(filepath: str):

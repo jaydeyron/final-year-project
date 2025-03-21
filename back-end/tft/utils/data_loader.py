@@ -90,13 +90,31 @@ def preprocess_data(data, scaler_params=None):
     - scaled_features: numpy array of normalized feature values
     - scaler_params: dict with mean and scale values used for normalization
     """
-    # Select relevant features
-    features = data[['Open', 'High', 'Low', 'Close', 'Volume', 'EMA10', 'EMA30', 'RSI', 'MACD', 'MACD_Signal']].values
+    # Check if all required features exist
+    required_features = ['Open', 'High', 'Low', 'Close', 'Volume', 'EMA10', 'EMA30', 'RSI', 'MACD', 'MACD_Signal']
+    missing_features = [f for f in required_features if f not in data.columns]
+    
+    # If features are missing, add them with default values
+    if missing_features:
+        print(f"Warning: Missing features in data: {missing_features}")
+        for feature in missing_features:
+            # Use Close price as default value
+            data[feature] = data['Close'] if feature != 'Volume' else data['Close'] * 1000
+            
+    # Select relevant features - now we're sure they exist
+    features = data[required_features].values
+    
+    # Handle NaN values before scaling
+    if np.isnan(features).any():
+        features = np.nan_to_num(features, nan=0.0)
     
     if scaler_params is None:
         # Calculate mean and standard deviation for scaling
         mean_values = np.mean(features, axis=0)
         std_values = np.std(features, axis=0)
+        
+        # Avoid division by zero for features with zero std dev
+        std_values[std_values == 0] = 1.0
         
         # Create scaler parameters dictionary
         scaler_params = {
