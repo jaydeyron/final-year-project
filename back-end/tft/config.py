@@ -1,35 +1,37 @@
 import os
-import torch  # Import the torch library
+import torch
 
 class Config:
     # Model parameters
-    INPUT_SIZE = 10  # Number of features in your data
-    HIDDEN_SIZE = 128  # Changed from 64 to 128 to match the saved model
+    INPUT_SIZE = 10  # This will be overridden by actual feature count
+    HIDDEN_SIZE = 128
     NUM_LAYERS = 3
-    NUM_HEADS = 8  # Using 8 heads (multiple of 64)
-    DROPOUT = 0.1  # Reduced from previous value to allow more flexibility
+    NUM_HEADS = 8
+    DROPOUT = 0.2  # Increased to prevent overfitting
     
     # Price constraint parameters
-    MAX_CHANGE_PERCENT = 0.10  # Increased to 10% to allow more varied predictions
+    MAX_CHANGE_PERCENT = 0.15  # Increased to 15% - more flexibility
     
     # Training parameters
-    BATCH_SIZE = 32
-    EPOCHS = 100  # Increased to ensure better learning
+    BATCH_SIZE = 64  # Increased for better gradient estimates
+    EPOCHS = 120
     LEARNING_RATE = 0.001
     SEQ_LENGTH = 60  # 60 days of historical data
     
-    # Features for the model
+    # Features for the model - basic list, will be expanded by preprocessing
     FEATURES = [
         'Open', 'High', 'Low', 'Close', 
-        'Volume', 'EMA10', 'EMA30', 'RSI', 'MACD', 'MACD_Signal'
+        'Volume', 'EMA10', 'EMA30', 'RSI', 'MACD', 'MACD_Signal',
+        'ATR', 'ROC', 'BB_width', 'BB_B', 'Price_to_MA50', 'Price_to_MA200',
+        'Volatility_Ratio', 'ADX'
     ]
     
     # Device configuration
     DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     # File paths - Using absolute paths to backend/models
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # /Users/jay/Documents/GitHub/final-year-project/back-end
-    MODEL_DIR = os.path.join(BASE_DIR, 'models')  # /Users/jay/Documents/GitHub/final-year-project/back-end/models
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    MODEL_DIR = os.path.join(BASE_DIR, 'models')
     
     # Ensure model directory exists
     os.makedirs(MODEL_DIR, exist_ok=True)
@@ -52,7 +54,6 @@ class Config:
     @classmethod
     def get_model_path(cls, symbol):
         """Get paths for model and scaler files"""
-        # This method name is used in model_utils.py
         clean_symbol = symbol.replace('^', 'SENSEX').replace('.BO', '')
         base_dir = os.path.join(cls.MODEL_DIR, clean_symbol)
         os.makedirs(base_dir, exist_ok=True)
@@ -62,7 +63,6 @@ class Config:
             'scaler': os.path.join(base_dir, 'scaler.json')
         }
 
-    # Also add the method expected by newer code (with same functionality)
     @classmethod
     def get_model_paths(cls, symbol):
         """Alias for get_model_path with additional metadata path"""
