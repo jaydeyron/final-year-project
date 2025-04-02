@@ -1,14 +1,27 @@
 import argparse
 import sys
 import os
-from datetime import datetime, timedelta  # Ensure datetime is imported
+from datetime import datetime, timedelta
 import torch
-from utils.data_loader import fetch_data, preprocess_data, create_sequences, TimeSeriesDataset
-from utils.trainer import Trainer
-from utils.model_utils import save_model, load_model
-from models.tft_model import TemporalFusionTransformer
+
+# Use absolute imports with the full path to ensure modules are found
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+
+# Add both directories to path
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Now try the imports with explicit tft prefix
+from tft.utils.data_loader import fetch_data, preprocess_data, create_sequences, TimeSeriesDataset
+from tft.utils.trainer import Trainer
+from tft.utils.model_utils import save_model, load_model
+from tft.models.tft_model import TemporalFusionTransformer
+from tft.config import Config
+
 from torch.utils.data import DataLoader
-from config import Config
 
 """
 Script to update an existing model with new data.

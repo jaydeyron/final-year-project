@@ -3,15 +3,25 @@ import argparse
 import sys
 import os
 from datetime import datetime
-from utils.data_loader import fetch_data, preprocess_data
-from utils.model_utils import load_model
-from config import Config
+
+# Use absolute imports with the full path to ensure modules are found
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+
+# Add both directories to path
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Now try the imports with explicit tft prefix
+from tft.utils.data_loader import fetch_data, preprocess_data
+from tft.utils.model_utils import load_model
+from tft.config import Config
+from tft.models.tft_model import TemporalFusionTransformer
+
 import numpy as np
 import pandas as pd
-
-# Fix the import path for the TFT model
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from models.tft_model import TemporalFusionTransformer
 
 def analyze_market_conditions(data, window=14):
     """Analyze current market conditions to adjust prediction bias"""
@@ -253,8 +263,10 @@ def main():
             debug_print(f"Calculated prediction: {predicted_value:.2f}")
             debug_print(f"Percent change: {percent_change:.2f}%")
             
-            # Print only the predicted value for API
-            print(f"{predicted_value:.2f}")
+            # Print only the predicted value for API - ensure it's the only output to stdout
+            # Flush before printing to ensure clean output
+            sys.stdout.flush()
+            print(f"{predicted_value:.2f}", flush=True)
             
         except Exception as pred_error:
             debug_print(f"Prediction error details: {str(pred_error)}")
@@ -287,11 +299,15 @@ def main():
                 debug_print(f"Total change: {total_change:.4f} ({total_change*100:.2f}%)")
                 debug_print(f"Fallback prediction: {fallback_prediction:.2f}")
                 
-                print(f"{fallback_prediction:.2f}")
+                # Make sure we flush stdout before printing the fallback prediction
+                sys.stdout.flush()
+                print(f"{fallback_prediction:.2f}", flush=True)
             except Exception as fb_error:
                 debug_print(f"Fallback prediction failed: {str(fb_error)}")
                 # Ultimate fallback - just return the last close
-                print(f"{recent_data['Close'].iloc[-1]:.2f}")
+                # Make sure we flush stdout before printing the ultimate fallback
+                sys.stdout.flush()
+                print(f"{recent_data['Close'].iloc[-1]:.2f}", flush=True)
     
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)

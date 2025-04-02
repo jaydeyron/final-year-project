@@ -5,11 +5,23 @@ import sys
 import os
 import json
 from datetime import datetime
-from utils.data_loader import fetch_data, preprocess_data, create_sequences, TimeSeriesDataset
-from utils.trainer import Trainer
-from utils.model_utils import save_model, load_model
-from config import Config
-from models.tft_model import TemporalFusionTransformer
+
+# Use absolute imports with the full path to ensure modules are found
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+
+# Add both directories to path
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Now try the imports with explicit tft prefix
+from tft.utils.data_loader import fetch_data, preprocess_data, create_sequences, TimeSeriesDataset
+from tft.utils.trainer import Trainer
+from tft.utils.model_utils import save_model, load_model
+from tft.config import Config
+from tft.models.tft_model import TemporalFusionTransformer
 
 # Import NIFTY_STOCKS from a shared module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
