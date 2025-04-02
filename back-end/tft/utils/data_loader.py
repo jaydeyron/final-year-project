@@ -108,18 +108,27 @@ def preprocess_data(data, scaler_params=None):
     if np.isnan(features).any():
         features = np.nan_to_num(features, nan=0.0)
     
-    if scaler_params is None:
+    # If scaler_params is provided, ensure price-specific scaling is created
+    if scaler_params is not None:
+        # Make sure we have price-specific scaling parameters
+        if 'price_mean_' not in scaler_params or 'price_scale_' not in scaler_params:
+            # Create price-specific params
+            scaler_params['price_mean_'] = scaler_params['mean_']
+            scaler_params['price_scale_'] = scaler_params['scale_']
+    else:
         # Calculate mean and standard deviation for scaling
         mean_values = np.mean(features, axis=0)
         std_values = np.std(features, axis=0)
         
         # Avoid division by zero for features with zero std dev
-        std_values[std_values == 0] = 1.0
+        std_values[std_values < 0.0001] = 1.0
         
         # Create scaler parameters dictionary
         scaler_params = {
             'mean_': mean_values,
-            'scale_': std_values
+            'scale_': std_values,
+            'price_mean_': mean_values,  # Add price-specific parameters
+            'price_scale_': std_values
         }
     
     # Scale the features

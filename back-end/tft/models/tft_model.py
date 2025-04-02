@@ -33,19 +33,32 @@ class PriceConstraintLayer(nn.Module):
         self.max_change_percent = max_change_percent
         
     def forward(self, x, last_close):
+        # Make constraints more adaptable to market conditions
+        # Instead of fixed percentages, make the allowed range dependent on recent volatility
+        batch_size = x.size(0)
+        
+        # Allow wider range for more confident predictions
+        confidence_factor = torch.sigmoid(torch.abs(x - last_close) / (last_close * 0.01))
+        
+        # Dynamic constraint based on confidence
+        effective_constraint = self.max_change_percent * (1.0 + confidence_factor)
+        
         # Calculate allowable price range
-        min_price = last_close * (1 - self.max_change_percent)
-        max_price = last_close * (1 + self.max_change_percent)
+        min_price = last_close * (1 - effective_constraint)
+        max_price = last_close * (1 + effective_constraint)
         
-        # Instead of hard clamping, use a soft constraint
-        # This adds a penalty but allows exceeding the threshold if the model is confident
-        x_constrained = x.clone()
-        above_max = x > max_price
-        below_min = x < min_price
+        # Apply soft constraints with smoother transition
+        x_constrained = torch.where(
+            x > max_price,
+            max_price + 0.3 * torch.tanh((x - max_price) / (last_close * 0.01)),
+            x
+        )
         
-        # Apply soft constraints
-        x_constrained[above_max] = max_price + 0.2 * (x[above_max] - max_price)
-        x_constrained[below_min] = min_price + 0.2 * (x[below_min] - min_price)
+        x_constrained = torch.where(
+            x_constrained < min_price,
+            min_price + 0.3 * torch.tanh((x_constrained - min_price) / (last_close * 0.01)),
+            x_constrained
+        )
         
         return x_constrained
 
@@ -59,17 +72,33 @@ class TemporalFusionTransformer(nn.Module):
         self.output_size = output_size
         self.max_change_percent = max_change_percent
         
-        # Feature processing layers
+        # Enhanced Feature processing layers with variable importance
         self.feature_layer = nn.Linear(input_size, hidden_size)
+        self.feature_gate = nn.Sequential(
+            nn.Linear(input_size, input_size),
+            nn.Sigmoid()
+        )
         self.positional_encoding = PositionalEncoding(hidden_size, dropout)
         
-        # Temporal processing with LSTM
+        # Improved temporal processing with bidirectional LSTM
         self.lstm = nn.LSTM(
             input_size=hidden_size, 
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
+            bidirectional=True,  # Bidirectional for better context
             dropout=dropout if num_layers > 1 else 0
+        )
+        
+        # Reduce dimensionality back after bidirectional
+        self.lstm_reducer = nn.Linear(hidden_size * 2, hidden_size)
+        
+        # Add temporal attention to focus on important timepoints
+        self.temporal_attention = nn.MultiheadAttention(
+            embed_dim=hidden_size,
+            num_heads=num_heads,
+            dropout=dropout,
+            batch_first=True
         )
         
         # Self-attention transformer layer for variable selection
@@ -85,44 +114,90 @@ class TemporalFusionTransformer(nn.Module):
             num_layers=num_layers
         )
         
-        # Output layers
-        self.pre_output = nn.Linear(hidden_size, hidden_size)
+        # Enhanced output layers with skip connections
+        self.pre_output_1 = nn.Linear(hidden_size, hidden_size)
+        self.pre_output_2 = nn.Linear(hidden_size, hidden_size)
         self.output_layer = nn.Linear(hidden_size, output_size)
+        
+        # Uncertainty estimation - predict both mean and variance
+        self.uncertainty_layer = nn.Linear(hidden_size, output_size)
         
         # Constrained output
         self.price_constraint = PriceConstraintLayer(max_change_percent)
         
+        # Layer normalization for stability
+        self.layer_norm1 = nn.LayerNorm(hidden_size)
+        self.layer_norm2 = nn.LayerNorm(hidden_size)
+        self.layer_norm3 = nn.LayerNorm(hidden_size)
+        
+        # Dropout for regularization
+        self.dropout = nn.Dropout(dropout)
+        
     def extract_last_close_price(self, x):
         # Extract last close price from each sequence (assuming close price is at index 3)
-        # Shape: [batch_size, seq_len, features] -> [batch_size, 1]
         return x[:, -1, 3:4]  # Last timestep's close price
         
     def forward(self, x, apply_constraint=False):
-        # x shape: [batch_size, sequence_length, input_size]
         batch_size, seq_len, _ = x.shape
         
         # Store last close price for constraint
         last_close = self.extract_last_close_price(x)
         
+        # Enhanced feature processing with variable importance weighting
+        feature_weights = self.feature_gate(x)
+        x = x * feature_weights
+        
         # Feature transformation
         x = self.feature_layer(x)
         x = self.positional_encoding(x)
         
-        # Temporal processing
-        x, _ = self.lstm(x)
+        # Temporal processing with bidirectional LSTM
+        lstm_out, _ = self.lstm(x)
         
-        # Self-attention mechanism
-        x = self.transformer_encoder(x)
+        # Reduce dimensionality back to hidden_size
+        lstm_out = self.lstm_reducer(lstm_out)
+        lstm_out = F.relu(lstm_out)
         
-        # Take the last output for prediction
-        x = x[:, -1, :]
+        # Apply layer normalization
+        lstm_out = self.layer_norm1(lstm_out)
         
-        # Output layers with residual connection
-        x = F.relu(self.pre_output(x)) + x
-        output = self.output_layer(x)
+        # Apply temporal self-attention
+        attn_out, _ = self.temporal_attention(lstm_out, lstm_out, lstm_out)
+        lstm_out = lstm_out + self.dropout(attn_out)  # Residual connection
+        lstm_out = self.layer_norm2(lstm_out)
+        
+        # Self-attention mechanism with transformer
+        transformer_out = self.transformer_encoder(lstm_out)
+        
+        # Take weighted combination of outputs for dynamic horizon attention
+        # This helps the model focus on the most relevant past timestamps
+        attention_weights = F.softmax(torch.matmul(
+            transformer_out[:, -1:, :],  # Use last timestep as query
+            transformer_out.transpose(1, 2)  # Key = all timesteps
+        ), dim=-1)
+        
+        context_vector = torch.matmul(attention_weights, transformer_out).squeeze(1)
+        
+        # Add the last timestamp representation with context
+        final_repr = transformer_out[:, -1, :] + 0.3 * context_vector
+        final_repr = self.layer_norm3(final_repr)
+        
+        # Multi-layer output with residual connections
+        hidden1 = F.relu(self.pre_output_1(final_repr))
+        hidden1 = self.dropout(hidden1)
+        hidden2 = F.relu(self.pre_output_2(hidden1))
+        hidden2 = self.dropout(hidden2)
+        
+        # Residual connection to improve gradient flow
+        output_features = hidden2 + 0.2 * hidden1 + 0.1 * final_repr
+        
+        # Main prediction
+        output = self.output_layer(output_features)
+        
+        # Estimate uncertainty (not used directly in prediction, but useful for model development)
+        uncertainty = F.softplus(self.uncertainty_layer(output_features))
         
         # Apply price constraint only if explicitly requested
-        # Set default to False to see raw model predictions
         if apply_constraint:
             output = self.price_constraint(output, last_close)
         

@@ -1,0 +1,14 @@
+{
+  "input_size": 10,
+  "hidden_size": 192,
+  "epochs": 150,
+  "timestamp": "2025-04-02T10:45:07.391430",
+  "symbol": "ITC",
+  "clean_symbol": "ITC",
+  "data_start_date": "2024-08-07",
+  "data_end_date": "2025-04-02",
+  "symbol_name": "ITC",
+  "bse_symbol": "ITC.BO",
+  "training_completed": "2025-04-02T10:45:07.312122",
+  "data_points": 160
+}

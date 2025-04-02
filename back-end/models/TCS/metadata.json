@@ -1,14 +1,14 @@
 {
   "input_size": 10,
-  "hidden_size": 128,
-  "epochs": 50,
-  "timestamp": "2025-03-20T11:18:04.364456",
+  "hidden_size": 192,
+  "epochs": 150,
+  "timestamp": "2025-04-02T11:02:13.247744",
   "symbol": "TCS",
   "clean_symbol": "TCS",
-  "data_start_date": "2023-12-14",
-  "data_end_date": "2025-03-20",
+  "data_start_date": "2024-09-05",
+  "data_end_date": "2025-04-02",
   "symbol_name": "Tata Consultancy Services Limited",
   "bse_symbol": "TCS.BO",
-  "training_completed": "2025-03-20T11:18:04.354514",
-  "data_points": 308
+  "training_completed": "2025-04-02T11:02:13.194416",
+  "data_points": 141
 }

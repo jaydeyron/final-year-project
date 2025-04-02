@@ -1,0 +1,14 @@
+{
+  "input_size": 10,
+  "hidden_size": 128,
+  "epochs": 120,
+  "timestamp": "2025-04-02T10:26:06.950322",
+  "symbol": "AXISBANK",
+  "clean_symbol": "AXISBANK",
+  "data_start_date": "2024-05-08",
+  "data_end_date": "2025-04-02",
+  "symbol_name": "Axis Bank Limited",
+  "bse_symbol": "AXISBANK.BO",
+  "training_completed": "2025-04-02T10:26:06.928100",
+  "data_points": 222
+}

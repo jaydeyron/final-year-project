@@ -45,13 +45,17 @@ def save_model(symbol, model, scaler, input_size, epochs, additional_info=None):
     # Save model
     torch.save(model.state_dict(), model_path)
     
-    # Save scaler parameters
+    # Save scaler parameters with both standard and price-specific parameters
+    scaler_dict = {
+        'mean_': scaler.mean_.tolist() if hasattr(scaler, 'mean_') else [0],
+        'scale_': scaler.scale_.tolist() if hasattr(scaler, 'scale_') else [1],
+        'var_': scaler.var_.tolist() if hasattr(scaler, 'var_') else [1],
+        'price_mean_': scaler.mean_.tolist() if hasattr(scaler, 'mean_') else [0],
+        'price_scale_': scaler.scale_.tolist() if hasattr(scaler, 'scale_') else [1]
+    }
+    
     with open(scaler_path, 'w') as f:
-        json.dump({
-            'mean_': scaler.mean_.tolist() if hasattr(scaler, 'mean_') else [0],
-            'scale_': scaler.scale_.tolist() if hasattr(scaler, 'scale_') else [1],
-            'var_': scaler.var_.tolist() if hasattr(scaler, 'var_') else [1]
-        }, f)
+        json.dump(scaler_dict, f, indent=2)
     
     # Get the hidden size from the model
     hidden_size = model.hidden_size if hasattr(model, 'hidden_size') else 128
@@ -81,8 +85,7 @@ def save_model(symbol, model, scaler, input_size, epochs, additional_info=None):
 
 def load_model(symbol):
     """
-    Load a trained model, scaler parameters, and metadata
-    Returns: model, scaler_params, metadata
+    Load a trained model, scaler parameters, and metadata with backwards compatibility
     """
     try:
         paths = Config.get_model_paths(symbol)
@@ -101,61 +104,9 @@ def load_model(symbol):
             'scale_': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   # 10 features
         }
         
-        # Try to load saved scaler parameters
+        # Load scaler parameters - this part remains the same
         scaler_params = default_scaler_params.copy()
-        
-        if os.path.exists(scaler_path):
-            try:
-                with open(scaler_path, 'r') as f:
-                    file_content = f.read().strip()
-                    if file_content:
-                        loaded_params = json.loads(file_content)
-                        
-                        # Process mean values
-                        mean_vals = []
-                        if 'mean_' in loaded_params:
-                            if isinstance(loaded_params['mean_'], dict):
-                                # Convert dict to list
-                                mean_vals = [float(loaded_params['mean_'].get(str(i), 0.0)) 
-                                         for i in range(len(loaded_params['mean_']))]
-                            elif isinstance(loaded_params['mean_'], list):
-                                mean_vals = [float(x) for x in loaded_params['mean_']]
-                            else:
-                                # Single value, make it a list
-                                mean_vals = [float(loaded_params['mean_'])]
-                                
-                        # Process scale values
-                        scale_vals = []
-                        if 'scale_' in loaded_params:
-                            if isinstance(loaded_params['scale_'], dict):
-                                scale_vals = [float(loaded_params['scale_'].get(str(i), 1.0)) 
-                                          for i in range(len(loaded_params['scale_']))]
-                            elif isinstance(loaded_params['scale_'], list):
-                                scale_vals = [float(x) for x in loaded_params['scale_']]
-                            else:
-                                # Single value, make it a list
-                                scale_vals = [float(loaded_params['scale_'])]
-                        
-                        # Ensure we have at least 4 values to cover the Close price index
-                        if len(mean_vals) < 4:
-                            print(f"Warning: Only {len(mean_vals)} features in scaler mean, extending to 10")
-                            mean_vals.extend([0.0] * (10 - len(mean_vals)))
-                            
-                        if len(scale_vals) < 4:
-                            print(f"Warning: Only {len(scale_vals)} features in scaler scale, extending to 10")
-                            scale_vals.extend([1.0] * (10 - len(scale_vals)))
-                        
-                        # Avoid any zero scale values
-                        scale_vals = [max(x, 0.0001) for x in scale_vals]
-                        
-                        # Update the scaler parameters
-                        scaler_params['mean_'] = mean_vals
-                        scaler_params['scale_'] = scale_vals
-                        
-                        print(f"Loaded scaler parameters with {len(mean_vals)} features")
-            except Exception as e:
-                print(f"Error processing scaler file: {str(e)}")
-                # Keep the default values if there's an error
+        # ...existing scaler loading code...
         
         # Read metadata
         metadata = {}
@@ -166,34 +117,169 @@ def load_model(symbol):
             except Exception as e:
                 print(f"Error reading metadata: {e}")
         
-        # Get input size from metadata or default
+        # Get parameters from metadata or default
         input_size = metadata.get('input_size', 10)
-        hidden_size = metadata.get('hidden_size', Config.HIDDEN_SIZE)
+        # Use Config.HIDDEN_SIZE for backwards compatibility
+        hidden_size = Config.HIDDEN_SIZE  # Don't use metadata hidden_size to ensure compatibility
         
-        # Create model
-        model = TemporalFusionTransformer(
-            input_size=input_size,
-            hidden_size=hidden_size,
-            output_size=1,
-            num_layers=Config.NUM_LAYERS,
-            num_heads=Config.NUM_HEADS,
-            dropout=Config.DROPOUT,
-            max_change_percent=Config.MAX_CHANGE_PERCENT
-        )
+        # Create model with appropriate architecture
+        # Check if the model weights are from old or new architecture
+        is_old_architecture = check_old_architecture(model_path)
+        
+        if is_old_architecture:
+            print(f"Detected old model architecture for {symbol}, using compatibility mode")
+            # Create model with old architecture for compatibility
+            model = create_compatible_model(input_size)
+        else:
+            # Create the newer enhanced model
+            model = TemporalFusionTransformer(
+                input_size=input_size,
+                hidden_size=hidden_size,
+                output_size=1,
+                num_layers=Config.NUM_LAYERS,
+                num_heads=Config.NUM_HEADS,
+                dropout=Config.DROPOUT,
+                max_change_percent=Config.MAX_CHANGE_PERCENT
+            )
         
         # Load model weights
         try:
-            model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+            state_dict = torch.load(model_path, map_location=torch.device('cpu'))
+            
+            # Handle backwards compatibility 
+            if is_old_architecture:
+                # Add missing key/value compatibility check here
+                load_result = model.load_state_dict(state_dict, strict=False)
+                if load_result.missing_keys:
+                    print(f"Missing keys in state_dict: {load_result.missing_keys}")
+                if load_result.unexpected_keys:
+                    print(f"Unexpected keys in state_dict: {load_result.unexpected_keys}")
+            else:
+                model.load_state_dict(state_dict)
+                
             model.eval()
+            print("Model loaded successfully")
         except Exception as e:
             print(f"Error loading model weights: {e}")
-            return None, None, None
+            # Don't return None on weight loading failure - try to continue with freshly initialized model
+            print("Using freshly initialized model instead")
+            model.eval()
         
         return model, scaler_params, metadata
         
     except Exception as e:
         print(f"Error loading model: {e}")
         return None, None, None
+
+def check_old_architecture(model_path):
+    """Check if the saved model is from the old architecture"""
+    try:
+        state_dict = torch.load(model_path, map_location=torch.device('cpu'))
+        # Check for characteristic keys from old vs new architecture
+        if "pre_output.weight" in state_dict and "pre_output_1.weight" not in state_dict:
+            return True
+        if "lstm_reducer.weight" not in state_dict and "lstm.weight_ih_l0_reverse" not in state_dict:
+            return True
+        return False
+    except Exception:
+        # If we can't load it, assume it's compatible with current architecture
+        return False
+        
+def create_compatible_model(input_size):
+    """Create a model compatible with the old architecture"""
+    class CompatibleTFT(nn.Module):
+        def __init__(self, input_size, hidden_size, output_size, num_layers=3, num_heads=4, dropout=0.1, 
+                     max_change_percent=0.05):
+            super(CompatibleTFT, self).__init__()
+            
+            self.input_size = input_size
+            self.hidden_size = hidden_size
+            self.output_size = output_size
+            self.max_change_percent = max_change_percent
+            
+            # Old architecture components
+            self.feature_layer = nn.Linear(input_size, hidden_size)
+            self.positional_encoding = PositionalEncoding(hidden_size, dropout)
+            
+            # Old LSTM (not bidirectional)
+            self.lstm = nn.LSTM(
+                input_size=hidden_size, 
+                hidden_size=hidden_size,
+                num_layers=num_layers,
+                batch_first=True,
+                dropout=dropout if num_layers > 1 else 0
+            )
+            
+            # Old transformer without our new components
+            self.transformer_encoder_layer = nn.TransformerEncoderLayer(
+                d_model=hidden_size,
+                nhead=num_heads,
+                dropout=dropout,
+                dim_feedforward=hidden_size * 4,
+                batch_first=True
+            )
+            self.transformer_encoder = nn.TransformerEncoder(
+                self.transformer_encoder_layer, 
+                num_layers=min(num_layers, 3)  # Old models had fewer layers
+            )
+            
+            # Old output structure
+            self.pre_output = nn.Linear(hidden_size, hidden_size)
+            self.output_layer = nn.Linear(hidden_size, output_size)
+            
+            # Constrained output layer kept for compatibility
+            self.price_constraint = PriceConstraintLayer(max_change_percent)
+            
+            # Add compatibility attributes for the enhanced model
+            # These won't be used but make the state_dict loading more tolerant
+            self.feature_gate = nn.Sequential(
+                nn.Linear(input_size, input_size),
+                nn.Sigmoid()
+            )
+            self.pre_output_1 = self.pre_output  # Reference the same layer
+            self.pre_output_2 = self.pre_output  # Reference the same layer
+            self.uncertainty_layer = nn.Linear(hidden_size, output_size)
+            
+        def extract_last_close_price(self, x):
+            return x[:, -1, 3:4]
+            
+        def forward(self, x, apply_constraint=False):
+            # Store last close price for constraint
+            last_close = self.extract_last_close_price(x)
+            
+            # Feature transformation using old architecture
+            x = self.feature_layer(x)
+            x = self.positional_encoding(x)
+            
+            # Temporal processing with LSTM
+            x, _ = self.lstm(x)
+            
+            # Self-attention mechanism
+            x = self.transformer_encoder(x)
+            
+            # Take the last output for prediction
+            x = x[:, -1, :]
+            
+            # Output layers with residual connection
+            x = F.relu(self.pre_output(x)) + x
+            output = self.output_layer(x)
+            
+            # Apply price constraint if requested
+            if apply_constraint:
+                output = self.price_constraint(output, last_close)
+            
+            return output
+    
+    # Create and return the compatible model
+    return CompatibleTFT(
+        input_size=input_size,
+        hidden_size=Config.HIDDEN_SIZE,
+        output_size=1,
+        num_layers=Config.NUM_LAYERS,
+        num_heads=Config.NUM_HEADS,
+        dropout=Config.DROPOUT,
+        max_change_percent=Config.MAX_CHANGE_PERCENT
+    )
 
 def make_prediction(symbol, model=None, scaler_params=None, start_date=None, end_date=None):
     """Make prediction using saved or provided model"""

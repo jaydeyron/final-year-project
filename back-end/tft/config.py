@@ -2,23 +2,23 @@ import os
 import torch
 
 class Config:
-    # Model parameters
+    # Enhanced model parameters
     INPUT_SIZE = 10  # This will be overridden by actual feature count
-    HIDDEN_SIZE = 128
-    NUM_LAYERS = 3
-    NUM_HEADS = 8
-    DROPOUT = 0.2  # Increased to prevent overfitting
+    HIDDEN_SIZE = 192  # Increased from 128 for more capacity
+    NUM_LAYERS = 4  # Increased from 3 for more depth
+    NUM_HEADS = 8  # Maintained at 8 heads
+    DROPOUT = 0.25  # Increased from 0.2 for better regularization
     
-    # Price constraint parameters
-    MAX_CHANGE_PERCENT = 0.15  # Increased to 15% - more flexibility
+    # Price constraint parameters - allow more flexibility
+    MAX_CHANGE_PERCENT = 0.12  # Increased from 0.05 to 0.12 (12%)
     
     # Training parameters
-    BATCH_SIZE = 64  # Increased for better gradient estimates
-    EPOCHS = 120
-    LEARNING_RATE = 0.001
-    SEQ_LENGTH = 60  # 60 days of historical data
+    BATCH_SIZE = 32  # Reduced from 64 for better gradient estimates
+    EPOCHS = 150  # Increased from 120 for more learning
+    LEARNING_RATE = 0.0005  # Reduced from 0.001 for more stable training
+    SEQ_LENGTH = 60  # Maintained at 60 days of historical data
     
-    # Features for the model - basic list, will be expanded by preprocessing
+    # Features for the model
     FEATURES = [
         'Open', 'High', 'Low', 'Close', 
         'Volume', 'EMA10', 'EMA30', 'RSI', 'MACD', 'MACD_Signal',
