@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.11.21)  25 MAR 2025 11:47
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.11.21)  2 APR 2025 07:41
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -460,23 +460,27 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 ] [2]
-<tft_architecture.png, id=140, 1473.505pt x 868.24374pt>
+<tft_architecture.png, id=134, 1473.505pt x 868.24374pt>
 File: tft_architecture.png Graphic file (type png)
 <use tft_architecture.png>
-Package pdftex.def Info: tft_architecture.png  used on input line 170.
+Package pdftex.def Info: tft_architecture.png  used on input line 187.
 (pdftex.def)             Requested size: 226.79846pt x 133.63576pt.
 
-Underfull \hbox (badness 1502) in paragraph at lines 210--211
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[3]
+Underfull \hbox (badness 1502) in paragraph at lines 225--226
 []\OT1/ptm/m/n/10 Trend strength (re-la-tion-ship be-tween short and
  []
 
-[3 <./tft_architecture.png>]
-<training_curve.png, id=166, 1433.355pt x 326.21875pt>
+[4 <./tft_architecture.png>]
+<training_curve.png, id=168, 1433.355pt x 326.21875pt>
 File: training_curve.png Graphic file (type png)
 <use training_curve.png>
-Package pdftex.def Info: training_curve.png  used on input line 313.
+Package pdftex.def Info: training_curve.png  used on input line 304.
 (pdftex.def)             Requested size: 226.79846pt x 51.61366pt.
- [4 <./training_curve.png>] [5]
+ [5 <./training_curve.png>]
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -488,29 +492,27 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[6
-
-] (./paper.aux)
+[6] (./paper.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
  ***********
 Package rerunfilecheck Info: File `paper.out' has not changed.
-(rerunfilecheck)             Checksum: 45E47918691788BC90F805CDF88ED0AD;4239.
+(rerunfilecheck)             Checksum: 73C0947121FE0C7E3885B9DAE434D1F5;3796.
  ) 
 Here is how much of TeX's memory you used:
- 12728 strings out of 474116
- 196304 string characters out of 5743681
+ 12721 strings out of 474116
+ 196389 string characters out of 5743681
  1952187 words of memory out of 5000000
- 34859 multiletter control sequences out of 15000+600000
- 602329 words of font info for 123 fonts, out of 8000000 for 9000
+ 34860 multiletter control sequences out of 15000+600000
+ 600115 words of font info for 121 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,26n,79p,2309b,555s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,26n,79p,2309b,525s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on paper.pdf (6 pages, 346038 bytes).
+Output written on paper.pdf (6 pages, 339666 bytes).
 PDF statistics:
- 267 PDF objects out of 1000 (max. 8388607)
- 228 compressed objects within 3 object streams
- 71 named destinations out of 1000 (max. 500000)
- 219 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 255 PDF objects out of 1000 (max. 8388607)
+ 216 compressed objects within 3 object streams
+ 65 named destinations out of 1000 (max. 500000)
+ 179 words of extra memory for PDF output out of 10000 (max. 10000000)
 

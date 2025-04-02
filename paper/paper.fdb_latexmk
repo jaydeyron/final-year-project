@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1742883447.17969 "/Users/jay/Documents/GitHub/final-year-project/paper/paper.tex" "paper.pdf" "paper" 1742883448.23194 0
-  "/Users/jay/Documents/GitHub/final-year-project/paper/paper.tex" 1742883446.92435 28491 a820d55ec1759ab9876baf3f13dfcb91 ""
+["pdflatex"] 1743559879.51909 "/Users/jay/Documents/GitHub/final-year-project/paper/paper.tex" "paper.pdf" "paper" 1743559880.51129 0
+  "/Users/jay/Documents/GitHub/final-year-project/paper/paper.tex" 1743559879.31452 31667 d140662814a528f5041022faca29d990 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/local/texlive/2024/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/adobe/times/ptmb7t.tfm" 1136768653 2172 fd0c924230362ff848a33632ed45dc23 ""
@@ -112,11 +112,11 @@
   "/usr/local/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1732187608.86199 5467645 128b85b7cde5f5edc5cb7f1dd7ff8736 ""
   "/usr/local/texlive/2024/texmf-var/web2c/pdftex/pdflatex.fmt" 1732187548 8221431 9da81d5883b699b589f530af760879f5 ""
   "/usr/local/texlive/2024/texmf.cnf" 1710266656 577 e590dabc9e28c5b61546e15f63eebcdf ""
-  "paper.aux" 1742883448.16806 5246 54946806ea0e72c19555c6866765be5a "pdflatex"
-  "paper.out" 1742883448.16874 4239 45e47918691788bc90f805cdf88ed0ad "pdflatex"
-  "paper.tex" 1742883446.92435 28491 a820d55ec1759ab9876baf3f13dfcb91 ""
+  "paper.aux" 1743559880.45361 5211 74b4c7e3c15ff2f4f84ceff72091c20d "pdflatex"
+  "paper.out" 1743559880.45437 3796 73c0947121fe0c7e3885b9dae434d1f5 "pdflatex"
+  "paper.tex" 1743559879.31452 31667 d140662814a528f5041022faca29d990 ""
   "tft_architecture.png" 1742876027.31127 243734 920a5229c505f7645d8aeeb47068d8b5 ""
-  "training_curve.png" 1742876027.32633 81355 d31286626ffa698f9505c4e9b6b2bf65 ""
+  "training_curve.png" 1743558828.99406 81355 d31286626ffa698f9505c4e9b6b2bf65 ""
   (generated)
   "paper.aux"
   "paper.log"
