@@ -117,7 +117,11 @@ class Trainer:
             progress = int((epoch + 1) / num_epochs * 100)
             self._update_progress(progress)
             
-            print(f'Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.6f}, Val Loss: {val_loss:.6f if val_loss else "N/A"}')
+            # Adjusted print statement - only show val loss when available
+            if val_loss is not None:
+                print(f'Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.6f}, Val Loss: {val_loss:.6f}')
+            else:
+                print(f'Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.6f}')
         
         # Ensure 100% progress on completion
         self._update_progress(100)
@@ -136,16 +140,25 @@ class Trainer:
                 
         return total_val_loss / len(self.val_dataloader)
     
-    def _update_progress(self, progress):
+    def _update_progress(self, progress, error=None):
         """Update the progress file with the current training progress with better error handling"""
         try:
+            # Create the progress data with safer error handling
+            progress_data = {"progress": progress}
+            if error is not None:
+                # Safely convert error to string
+                error_message = str(error) if error is not None else "Unknown error"
+                # Ensure we don't use format specifiers in error message
+                error_message = error_message.replace('{', '{{').replace('}', '}}')
+                progress_data["error"] = error_message
+            
             # Use a temporary file to ensure atomic write
             progress_dir = os.path.dirname(self.progress_file)
             temp_file = os.path.join(progress_dir, f'progress_temp_{os.getpid()}.json')
                 
             # Write to temp file first
             with open(temp_file, 'w') as f:
-                json.dump({"progress": progress}, f)
+                json.dump(progress_data, f)
                 f.flush()
                 os.fsync(f.fileno())
                 
@@ -168,11 +181,11 @@ class Trainer:
                     print(f"Warning: Could not verify progress file: {e}")
                     
         except Exception as e:
-            print(f"Error updating progress: {e}")
+            print(f"Error updating progress: {str(e) if e is not None else 'Unknown error'}")
             
             # As a last resort, try a direct write
             try:
                 with open(self.progress_file, 'w') as f:
-                    json.dump({"progress": progress}, f)
+                    json.dump(progress_data, f)
             except Exception as direct_error:
-                print(f"Direct progress update also failed: {direct_error}")
+                print(f"Direct progress update also failed: {str(direct_error) if direct_error is not None else 'Unknown error'}")

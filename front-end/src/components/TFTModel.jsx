@@ -144,8 +144,20 @@ function TFTModel({ symbol }) {
       };
       
       if (useCustomDate && startDate) {
-        requestBody.start_date = startDate;
-        console.log(`Using custom start date: ${startDate}`);
+        // Ensure date is in YYYY-MM-DD format
+        const dateObject = new Date(startDate);
+        const formattedDate = dateObject.toISOString().split('T')[0];
+        
+        // Double-check format is valid
+        if (/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
+          requestBody.start_date = formattedDate;
+          console.log(`Using custom start date: ${formattedDate}`);
+        } else {
+          console.error(`Invalid date format: ${startDate} → ${formattedDate}`);
+          setError("Invalid date format. Please use YYYY-MM-DD format.");
+          setLoading(false);
+          return;
+        }
       }
       
       // Send training request

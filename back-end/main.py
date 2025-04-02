@@ -4,13 +4,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
+from typing import Optional
 import os
 import sys
 import logging
 import asyncio
 import json
 import re  # Add regex module for better pattern matching
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -180,11 +182,23 @@ app.add_middleware(
     max_age=86400,
 )
 
-# Define model request schema
+# Define model request schema with improved date validation
 class ModelRequest(BaseModel):
     symbol: str
-    start_date: str = None  # Optional start date
-    model_symbol: str = None  # Optional model override (e.g., "TCS")
+    start_date: Optional[str] = None  # Optional start date 
+    model_symbol: Optional[str] = None  # Optional model override (e.g., "TCS")
+    
+    # Add a validator for start_date format
+    @validator('start_date')
+    def validate_start_date(cls, v):
+        if v is None:
+            return v
+        try:
+            # Validate the date format
+            datetime.strptime(v, '%Y-%m-%d')
+            return v
+        except ValueError:
+            raise ValueError('start_date must be in YYYY-MM-DD format')
 
 # Map displaySymbol to bseSymbol
 def map_symbol_to_bse(symbol):
@@ -227,7 +241,7 @@ async def get_progress():
         # Get path to progress file
         progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
         
-        # Check if file exists
+        # Check if file exists with more detailed logging
         if os.path.exists(progress_file):
             try:
                 # Check file age
@@ -235,13 +249,40 @@ async def get_progress():
                 if file_age > 60:
                     logger.warning(f"Progress file is {file_age:.1f} seconds old")
                 
-                # Read and parse file with robust error handling
-                with open(progress_file, 'r') as f:
-                    file_content = f.read().strip()
+                # Read file content with extra error handling
+                try:
+                    with open(progress_file, 'r') as f:
+                        file_content = f.read().strip()
+                        logger.debug(f"Raw progress file content: '{file_content}'")
+                except Exception as read_error:
+                    logger.error(f"Error reading progress file: {str(read_error)}")
+                    file_content = ""
                     
                 if file_content:  # Only try to parse if file has content
                     try:
-                        data = json.loads(file_content)
+                        # Parse JSON with detailed error handling
+                        try:
+                            data = json.loads(file_content)
+                        except json.JSONDecodeError as json_error:
+                            logger.error(f"Failed to parse progress file: {str(json_error)}, content: '{file_content}'")
+                            # Try to sanitize and repair JSON in case of common formatting issues
+                            if '{' in file_content and '}' in file_content:
+                                repaired_content = file_content.replace("'", '"')
+                                # Extract content between { and }
+                                start_idx = repaired_content.find('{')
+                                end_idx = repaired_content.rfind('}') + 1
+                                if start_idx >= 0 and end_idx > start_idx:
+                                    try:
+                                        data = json.loads(repaired_content[start_idx:end_idx])
+                                        logger.info("Successfully repaired and parsed JSON content")
+                                    except:
+                                        # If repair fails, use empty dict
+                                        data = {}
+                                else:
+                                    data = {}
+                            else:
+                                data = {}
+                        
                         # Ensure progress is a number (or can be converted to one)
                         if 'progress' in data:
                             try:
@@ -250,17 +291,29 @@ async def get_progress():
                             except (ValueError, TypeError):
                                 logger.warning(f"Invalid progress value: {data['progress']}")
                         
-                        # Include any error message
+                        # Include any error message with safer string handling
                         if 'error' in data:
-                            response_data["error"] = str(data['error'])
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Failed to parse progress file: {str(e)}")
+                            error_value = data.get('error')
+                            if error_value is not None:
+                                # Safely convert error message to string, avoiding formatting issues
+                                try:
+                                    error_str = str(error_value)
+                                    # Replace any format specifiers to avoid issues with f-strings
+                                    error_str = error_str.replace('{', '{{').replace('}', '}}')
+                                    response_data["error"] = error_str
+                                except Exception as str_error:
+                                    logger.error(f"Error converting error message to string: {str_error}")
+                                    response_data["error"] = "Error message conversion failed"
+                            else:
+                                response_data["error"] = "Unknown error"
+                    except Exception as e:
+                        logger.error(f"Error processing progress data: {str(e)}")
             except Exception as e:
-                logger.error(f"Error reading progress file: {str(e)}")
+                logger.error(f"Error reading progress file: {str(e) if e is not None else 'Unknown error'}")
         else:
             logger.info("Progress file not found, using global progress value")
     except Exception as e:
-        logger.error(f"Error in progress endpoint: {str(e)}")
+        logger.error(f"Error in progress endpoint: {str(e) if e is not None else 'Unknown error'}")
         # On any error, return a safe default
         response_data = {"progress": 0}
     
@@ -271,8 +324,18 @@ async def get_progress():
         "Pragma": "no-cache"
     }
     
-    # Log the response we're sending
-    logger.info(f"Sending progress response: {response_data}")
+    # Log the response we're sending with safe string handling
+    try:
+        # Create a safe copy of the response data for logging
+        log_data = response_data.copy()
+        if 'error' in log_data:
+            # Truncate error message to prevent log issues
+            error_msg = log_data['error']
+            if len(error_msg) > 100:
+                log_data['error'] = error_msg[:100] + "..." 
+        logger.info(f"Sending progress response: {log_data}")
+    except Exception as log_error:
+        logger.error(f"Error logging response: {str(log_error) if log_error is not None else 'Unknown error'}")
     
     return JSONResponse(content=response_data, headers=headers)
 
@@ -310,10 +373,10 @@ async def train_model(request: ModelRequest):
             '--display-symbol', display_symbol,
         ]
         
-        # Add start date if provided
+        # Add start date if provided - add format debugging
         if request.start_date:
             cmd.extend(['--start-date', request.start_date])
-            logger.info(f"Using custom start date: {request.start_date}")
+            logger.info(f"Using custom start date: {request.start_date} (format validation passed)")
         
         # Update global progress tracking
         global training_progress

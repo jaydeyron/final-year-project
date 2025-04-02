@@ -55,6 +55,15 @@ def main():
     # Use provided start date or fall back to stock info
     start_date = args.start_date or stock_info.get('startDate', "2000-01-01")
     
+    # Validate date format
+    if start_date:
+        try:
+            datetime.strptime(start_date, '%Y-%m-%d')
+            print(f"Using validated start date: {start_date}")
+        except ValueError:
+            print(f"Warning: Invalid start date format '{start_date}', falling back to default")
+            start_date = stock_info.get('startDate', "2000-01-01")
+    
     # Use provided end date or default to today
     end_date = args.end_date or datetime.now().strftime('%Y-%m-%d')
     
@@ -84,9 +93,22 @@ def main():
         # Log summary of sequence creation
         print(f"Created {len(xs)} sequences for training")
         
-        # Create dataset and dataloader
-        dataset = TimeSeriesDataset(xs, ys)
-        dataloader = DataLoader(dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
+        # Split data into training and validation sets
+        # Use 80% for training, 20% for validation
+        train_size = int(0.8 * len(xs))
+        train_x, val_x = xs[:train_size], xs[train_size:]
+        train_y, val_y = ys[:train_size], ys[train_size:]
+        
+        print(f"Training set: {len(train_x)} sequences")
+        print(f"Validation set: {len(val_x)} sequences")
+        
+        # Create datasets for both training and validation
+        train_dataset = TimeSeriesDataset(train_x, train_y)
+        val_dataset = TimeSeriesDataset(val_x, val_y)
+        
+        # Create dataloaders
+        train_dataloader = DataLoader(train_dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
+        val_dataloader = DataLoader(val_dataset, batch_size=Config.BATCH_SIZE)
         
         input_size = xs.shape[2]
         
@@ -123,9 +145,15 @@ def main():
             )
             total_epochs = args.epochs
 
-        # Train model
+        # Train model - pass the validation dataloader
         print(f"Starting training for {args.epochs} epochs...")
-        trainer = Trainer(model, dataloader, Config.DEVICE, Config.LEARNING_RATE)
+        trainer = Trainer(
+            model, 
+            train_dataloader,  # Now using train_dataloader instead of dataloader
+            Config.DEVICE, 
+            Config.LEARNING_RATE,
+            val_dataloader=val_dataloader  # Add validation dataloader
+        )
         trainer.train(args.epochs)
 
         # Save model, scaler, and metadata
@@ -157,12 +185,16 @@ def main():
         
     except Exception as e:
         print(f"Error during training: {str(e)}")
-        # Update progress file to show error
+        # Update progress file to show error with safer error serialization
         try:
             with open(progress_file, 'w') as f:
-                json.dump({"progress": -1, "error": str(e)}, f)
-        except:
-            pass
+                # Convert the error to a string, handling None cases
+                error_message = str(e) if e is not None else "Unknown error"
+                # Ensure we don't use format specifiers in error message
+                error_message = error_message.replace('{', '{{').replace('}', '}}')
+                json.dump({"progress": -1, "error": error_message}, f)
+        except Exception as write_error:
+            print(f"Error writing to progress file: {str(write_error)}")
         raise e
 
 if __name__ == "__main__":
