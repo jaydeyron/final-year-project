@@ -1,14 +1,14 @@
 {
   "input_size": 10,
   "hidden_size": 128,
-  "epochs": 50,
-  "timestamp": "2025-03-21T23:07:22.978266",
+  "epochs": 120,
+  "timestamp": "2025-04-08T22:38:31.155524",
   "symbol": "SENSEX",
   "clean_symbol": "SENSEX",
   "data_start_date": "2024-09-18",
-  "data_end_date": "2025-03-21",
+  "data_end_date": "2025-04-08",
   "symbol_name": "Bombay Stock Exchange SENSEX",
   "bse_symbol": "^BSESN",
-  "training_completed": "2025-03-21T23:07:22.960677",
-  "data_points": 126
+  "training_completed": "2025-04-08T22:38:31.134676",
+  "data_points": 137
 }

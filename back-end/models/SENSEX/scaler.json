@@ -1,1 +1,17 @@
-{"mean_": [0], "scale_": [1], "var_": [1]}
+{
+  "mean_": [
+    0
+  ],
+  "scale_": [
+    1
+  ],
+  "var_": [
+    1
+  ],
+  "price_mean_": [
+    0
+  ],
+  "price_scale_": [
+    1
+  ]
+}

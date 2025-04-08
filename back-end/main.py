@@ -397,6 +397,50 @@ async def train_model(request: ModelRequest):
         logger.error(f"Training error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post('/update-model')
+async def update_model(request: ModelRequest):
+    """Incrementally update an existing model with latest data"""
+    try:
+        # Map the symbol to BSE symbol and get display symbol
+        input_symbol = request.symbol
+        bse_symbol, display_symbol = map_symbol_to_bse(input_symbol)
+        
+        logger.info(f"Starting incremental update for display:{display_symbol} using data:{bse_symbol}")
+        
+        # Initialize progress file to show processing
+        progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
+        with open(progress_file, 'w') as f:
+            json.dump({"progress": 0, "update_type": "incremental"}, f)
+            f.flush()
+            os.fsync(f.fileno())  # Force write to disk
+        
+        # Set up the command
+        cmd = [
+            sys.executable,
+            'tft/incremental_update.py',
+            '--symbol', bse_symbol,
+            '--display-symbol', display_symbol,
+            '--epochs', '10'  # Use fewer epochs for incremental updates
+        ]
+        
+        # Execute the update process
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        # Start process but don't wait
+        with open(progress_file, 'w') as f:
+            json.dump({"progress": 10, "update_type": "incremental"}, f)
+            
+        # Return immediately so UI can show processing
+        return {"status": "update_started"}
+            
+    except Exception as e:
+        logger.error(f"Update error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post('/predict')
 async def predict(request: ModelRequest):
     try:

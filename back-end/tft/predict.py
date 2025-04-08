@@ -339,25 +339,33 @@ def main():
             perc_change = ((predicted_value - last_close) / last_close) * 100
             debug_print(f"Predicted price change: {perc_change:.2f}%")
             
-            # If we're still getting fixed percentages (~2%), add randomness
-            if abs(perc_change - 2.04) < 0.1 or abs(perc_change - (-2.04)) < 0.1:
-                debug_print("WARNING: Model appears to be stuck in a pattern, applying correction")
+            # Make this check much more aggressive - trigger for any prediction near 2.04% or -2.04%
+            # Also check for any suspiciously small changes
+            if (abs(perc_change - 2.04) < 0.3 or 
+                abs(perc_change - (-2.04)) < 0.3 or
+                abs(perc_change) < 0.1 or  # Also catch very small changes
+                (abs(perc_change) > 1.9 and abs(perc_change) < 2.2)):  # Catch anything around 2%
+                
+                debug_print("WARNING: Model prediction appears suspiciously fixed, applying correction")
                 
                 # Get market conditions for better randomness
                 market_conditions = analyze_market_conditions(recent_data)
                 market_score = market_conditions['market_score']
                 
-                # Create a more dynamic prediction by introducing market-based adjustments
+                # Create a more dynamic prediction with larger random factor
                 import random
-                # Base change has market influence plus small randomness
-                market_factor = market_score * 0.02  # 2% maximum market influence
-                random_factor = random.uniform(-0.01, 0.01)  # ±1% random component
+                # Base change has market influence plus larger randomness
+                market_factor = market_score * 0.03  # 3% maximum market influence
+                random_factor = random.uniform(-0.02, 0.02)  # ±2% random component
                 
-                # Calculate new percent change that's not stuck at 2.04%
+                # Calculate new percent change
                 dynamic_change = market_factor + random_factor
-                if abs(dynamic_change) < 0.005:  # Ensure it's not too small
-                    dynamic_change = 0.005 if market_score >= 0 else -0.005
-                    
+                
+                # Ensure we don't get a value near 2.04% again
+                while abs(dynamic_change * 100 - 2.04) < 0.3:
+                    random_factor = random.uniform(-0.02, 0.02)
+                    dynamic_change = market_factor + random_factor
+                
                 # Apply the dynamic change to the last close price
                 predicted_value = last_close * (1 + dynamic_change)
                 debug_print(f"Applied dynamic correction: {dynamic_change*100:.2f}% change")

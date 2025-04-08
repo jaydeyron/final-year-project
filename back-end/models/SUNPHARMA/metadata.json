@@ -1,0 +1,14 @@
+{
+  "input_size": 10,
+  "hidden_size": 192,
+  "epochs": 150,
+  "timestamp": "2025-04-02T11:27:31.303649",
+  "symbol": "SUNPHARMA",
+  "clean_symbol": "SUNPHARMA",
+  "data_start_date": "2024-08-01",
+  "data_end_date": "2025-04-02",
+  "symbol_name": "SUNPHARMA",
+  "bse_symbol": "SUNPHARMA.BO",
+  "training_completed": "2025-04-02T11:27:31.180569",
+  "data_points": 164
+}

@@ -55,7 +55,7 @@ U2109048@rajagiri.edu.in}
 % Guide centered below
 \begin{tabular}{c}
 \IEEEauthorblockN{Gadha S}\\[-5.5ex]
-\IEEEauthorblockA{\textit{Associate Professor, Department of Computer Science and Business Systems}\\
+\IEEEauthorblockA{\textit{Assistant Professor, Department of Computer Science and Business Systems}\\
 \textit{Rajagiri School of Engineering \& Technology}\\
 Kakkanad, India\\
 gadhas@rajagiritech.edu.in}
@@ -182,9 +182,63 @@ y_{\text{pred}} &= \text{OutputLayer}(h^{\text{attention}}_{T}) \\
 \end{aligned}
 \end{equation}
 
+\subsubsection{Temporal Fusion Transformer Architecture Details}
+The Temporal Fusion Transformer (TFT) is a state-of-the-art architecture for multi-horizon forecasting that incorporates specialized components designed for high-performance sequence modeling. Our implementation extends the base TFT architecture with several key modifications tailored for financial time series prediction:
+
+\begin{itemize}
+\item \textbf{Variable Selection Networks}: The model employs a feature gating mechanism that adaptively selects relevant features by learning importance weights. This helps filter irrelevant information that could otherwise introduce noise into the forecasting process—a critical ability when dealing with the complex multivariate nature of stock market data.
+
+\item \textbf{Bidirectional LSTM Processing}: By using bidirectional LSTMs, our model captures temporal dependencies in both forward and backward directions, allowing it to better understand context around each time point. This enhancement is particularly valuable for financial time series where both recent and older patterns can influence future price movements.
+
+\item \textbf{Multi-Head Attention Mechanism}: We implement a self-attention mechanism with multiple heads that allows the model to focus on relevant timestamps across the entire historical sequence. This helps the model identify longer-range dependencies that simple recurrent architectures might miss:
+
+\begin{equation}
+\begin{aligned}
+\text{Attention}(Q, K, V) &= \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V \\
+\text{MultiHead}(Q, K, V) &= \text{Concat}(\text{head}_1,...,\text{head}_h)W^O \\
+\text{where head}_i &= \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
+\end{aligned}
+\end{equation}
+
+\item \textbf{Hierarchical Processing}: Our model processes data through distinct layers with specific roles: 
+  \begin{enumerate}
+  \item Feature selection and embedding
+  \item Local temporal processing with bidirectional LSTM
+  \item Global temporal learning via multi-head attention
+  \item Feature enrichment through skip connections
+  \end{enumerate}
+
+\item \textbf{Temporal Context Enhancement}: We incorporate a dynamic context pooling mechanism that creates a weighted representation of relevant historical data points. This allows the model to focus adaptively on the most informative parts of the sequence:
+
+\begin{equation}
+\begin{aligned}
+\alpha_t &= \text{softmax}(q^T \cdot h_t) \\
+c &= \sum_{t=1}^{T} \alpha_t \cdot h_t
+\end{aligned}
+\end{equation}
+
+Where $\alpha_t$ represents the attention weights, $h_t$ are hidden representations at each time step, and $c$ is the resulting context vector.
+
+\item \textbf{Residual Connections}: We implement extensive residual connections throughout the architecture to improve gradient flow during training and enable the model to preserve important information across layers.
+\end{itemize}
+
+One of the key challenges we addressed is the potential for overfitting, especially when working with relatively limited financial time series data. We implemented several regularization strategies:
+
+\begin{itemize}
+\item \textbf{Layer Normalization}: Applied after major components to stabilize training and accelerate convergence.
+
+\item \textbf{Dropout}: Strategic application of dropout (25\%) throughout the network, particularly after attention mechanisms and between fully connected layers.
+
+\item \textbf{Weight Decay}: L2 regularization with coefficient $1 \times 10^{-4}$ to control the model complexity.
+
+\item \textbf{Gradient Clipping}: Limiting gradient norms to 1.0 to prevent explosive gradients during training.
+\end{itemize}
+
+Additionally, we enhanced the model interpretability by capturing internal attention weights, which provides insights into which historical time points most significantly influence predictions. This aspect is particularly valuable for financial applications where understanding the basis for predictions is often as important as the predictions themselves.
+
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.9\linewidth]{tft_architecture.png}
+\includegraphics[width=0.9\linewidth]{tft_architecture.jpeg}
 \caption{Modified TFT architecture for stock prediction with specialized embedding paths for different feature types and additional constraints.}
 \label{fig:tft_architecture}
 \end{figure}
