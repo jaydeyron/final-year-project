@@ -13,6 +13,7 @@ import asyncio
 import json
 import re  # Add regex module for better pattern matching
 from datetime import datetime
+from tft.config import Config  # Add this import
 
 # Load environment variables
 load_dotenv()
@@ -714,6 +715,72 @@ async def debug_model(symbol: str):
         return {
             "error": str(e)
         }
+
+# Replace the get_model_metadata endpoint for better diagnostics and handling
+@app.get('/model-metadata/{symbol}')
+async def get_model_metadata(symbol: str):
+    """Get metadata about a trained model"""
+    try:
+        # Log the incoming request
+        logger.info(f"Received metadata request for symbol: {symbol}")
+        
+        # Clean symbol more thoroughly
+        clean_symbol = symbol
+        if symbol.endswith('.BO'):
+            clean_symbol = symbol[:-3]
+        elif symbol.startswith('^'):
+            clean_symbol = symbol[1:]
+            
+        # Get path to metadata file
+        metadata_path = os.path.join(Config.MODEL_DIR, clean_symbol, 'metadata.json')
+        
+        # Debug info about paths
+        logger.info(f"MODEL_DIR: {Config.MODEL_DIR}")
+        logger.info(f"Looking for metadata at: {metadata_path}")
+        logger.info(f"File exists: {os.path.exists(metadata_path)}")
+        
+        # Check if metadata exists
+        if not os.path.exists(metadata_path):
+            logger.info(f"Metadata file not found for {clean_symbol}")
+            raise HTTPException(status_code=404, detail=f"No model found for {clean_symbol}")
+        
+        # Check file size for sanity
+        file_size = os.path.getsize(metadata_path)
+        logger.info(f"Metadata file size: {file_size} bytes")
+        
+        if file_size == 0:
+            logger.warning(f"Metadata file for {clean_symbol} is empty")
+            raise HTTPException(status_code=404, detail=f"Metadata file is empty")
+        
+        # Read metadata with better error handling
+        try:
+            with open(metadata_path, 'r') as f:
+                file_content = f.read()
+                logger.info(f"Raw metadata content length: {len(file_content)}")
+                
+                try:
+                    metadata = json.loads(file_content)
+                    
+                    # Validate the metadata has required fields
+                    if not isinstance(metadata, dict):
+                        raise ValueError(f"Metadata is not a dictionary: {type(metadata)}")
+                        
+                    # Log the keys found in metadata
+                    logger.info(f"Metadata keys: {', '.join(metadata.keys())}")
+                    
+                    return metadata
+                except json.JSONDecodeError as json_err:
+                    logger.error(f"JSON parse error: {str(json_err)}, content: {file_content[:100]}...")
+                    raise HTTPException(status_code=500, detail=f"Invalid metadata format: {str(json_err)}")
+        except Exception as read_error:
+            logger.error(f"Error reading metadata file: {str(read_error)}")
+            raise HTTPException(status_code=500, detail=f"Error reading model metadata: {str(read_error)}")
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving model metadata: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Serve static assets (CSS, JS, images) - AFTER API routes
 @app.get('/assets/{filepath:path}')

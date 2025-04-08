@@ -1,0 +1,14 @@
+{
+  "input_size": 10,
+  "hidden_size": 128,
+  "epochs": 120,
+  "timestamp": "2025-04-09T03:38:12.700216",
+  "symbol": "TATAMOTORS",
+  "clean_symbol": "TATAMOTORS",
+  "data_start_date": "2024-07-03",
+  "data_end_date": "2025-04-09",
+  "symbol_name": "TATAMOTORS",
+  "bse_symbol": "TATAMOTORS.BO",
+  "training_completed": "2025-04-09T03:38:12.662576",
+  "data_points": 189
+}
