@@ -1,14 +1,18 @@
 {
+  "symbol": "ASIANPAINT",
   "input_size": 10,
   "hidden_size": 128,
-  "epochs": 100,
-  "timestamp": "2025-03-21T23:11:41.787803",
-  "symbol": "ASIANPAINT",
-  "clean_symbol": "ASIANPAINT",
+  "num_layers": 3,
+  "num_heads": 8,
+  "dropout": 0.2,
+  "epochs": 110,
+  "creation_date": "2025-04-09T07:53:37.665858",
   "data_start_date": "2024-01-19",
-  "data_end_date": "2025-03-21",
+  "data_end_date": "2025-04-09",
   "symbol_name": "Asian Paints Limited",
   "bse_symbol": "ASIANPAINT.BO",
   "training_completed": "2025-03-21T23:11:41.760215",
-  "data_points": 285
+  "data_points": 307,
+  "last_update": "2025-04-09T07:53:37.653218",
+  "update_type": "incremental"
 }

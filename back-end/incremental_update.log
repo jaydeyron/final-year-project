@@ -1,0 +1,12 @@
+2025-04-09 03:49:22,865 - __main__ - INFO - Starting incremental update for ASIANPAINT.BO, model: ASIANPAINT
+2025-04-09 03:49:22,865 - __main__ - INFO - Loading model from directory: /Users/jay/Documents/GitHub/final-year-project/back-end/models/ASIANPAINT
+2025-04-09 03:49:22,877 - __main__ - ERROR - No existing model found for ASIANPAINT. Please train a model first.
+2025-04-09 03:49:36,490 - __main__ - INFO - Starting incremental update for ASIANPAINT.BO, model: ASIANPAINT
+2025-04-09 03:49:36,490 - __main__ - INFO - Loading model from directory: /Users/jay/Documents/GitHub/final-year-project/back-end/models/ASIANPAINT
+2025-04-09 03:49:36,499 - __main__ - ERROR - No existing model found for ASIANPAINT. Please train a model first.
+2025-04-09 03:51:18,938 - __main__ - INFO - Starting incremental update for ASIANPAINT.BO, model: ASIANPAINT
+2025-04-09 03:51:18,938 - __main__ - INFO - Loading model from directory: /Users/jay/Documents/GitHub/final-year-project/back-end/models/ASIANPAINT
+2025-04-09 03:51:18,954 - __main__ - ERROR - No existing model found for ASIANPAINT. Please train a model first.
+2025-04-09 07:31:49,104 - __main__ - INFO - Starting incremental update for ASIANPAINT.BO, model: ASIANPAINT
+2025-04-09 07:31:49,104 - __main__ - INFO - Loading model from directory: /Users/jay/Documents/GitHub/final-year-project/back-end/models/ASIANPAINT
+2025-04-09 07:31:49,118 - __main__ - ERROR - No existing model found for ASIANPAINT. Please train a model first.

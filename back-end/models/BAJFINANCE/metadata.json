@@ -1,14 +1,16 @@
 {
+  "symbol": "BAJFINANCE",
   "input_size": 10,
   "hidden_size": 128,
-  "epochs": 50,
-  "timestamp": "2025-03-21T23:08:59.002643",
-  "symbol": "BAJFINANCE",
-  "clean_symbol": "BAJFINANCE",
-  "data_start_date": "2024-07-17",
-  "data_end_date": "2025-03-21",
+  "num_layers": 3,
+  "num_heads": 8,
+  "dropout": 0.2,
+  "epochs": 120,
+  "creation_date": "2025-04-09T09:00:18.085238",
+  "data_start_date": "2024-07-02",
+  "data_end_date": "2025-04-09",
   "symbol_name": "BAJFINANCE",
   "bse_symbol": "BAJFINANCE.BO",
-  "training_completed": "2025-03-21T23:08:58.819485",
-  "data_points": 167
+  "training_completed": "2025-04-09T09:00:18.059461",
+  "data_points": 190
 }

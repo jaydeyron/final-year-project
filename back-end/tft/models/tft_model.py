@@ -137,7 +137,7 @@ class TemporalFusionTransformer(nn.Module):
         # Extract last close price from each sequence (assuming close price is at index 3)
         return x[:, -1, 3:4]  # Last timestep's close price
         
-    def forward(self, x, apply_constraint=False):
+    def forward(self, x, apply_constraint=False, random_seed=None):
         batch_size, seq_len, _ = x.shape
         
         # Store last close price for constraint
@@ -194,15 +194,15 @@ class TemporalFusionTransformer(nn.Module):
         # Main prediction
         output = self.output_layer(output_features)
         
-        # Completely remove the price constraint application
-        # Even if apply_constraint is True, we ignore it
-        
-        # IMPORTANT: Add jitter to predictions to break any learned patterns
-        if self.training == False:  # Only during inference/prediction
-            # Add small random noise to break the 2.04% pattern
+        # Add controlled randomness only if a seed is provided, otherwise be deterministic
+        if self.training == False and random_seed is not None:  
+            # Set seed for reproducibility when needed
+            torch.manual_seed(random_seed)
             last_close = self.extract_last_close_price(x)
-            noise_level = last_close * 0.005  # 0.5% noise
+            noise_level = last_close * 0.001  # Reduced from 0.5% to 0.1% noise
             noise = torch.randn_like(output) * noise_level
-            output = output + noise
+            output = output + noise  
+            # Reset seed
+            torch.manual_seed(torch.initial_seed())
         
         return output

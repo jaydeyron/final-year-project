@@ -305,9 +305,9 @@ def main():
             
             debug_print(f"Sequence shape: {last_sequence.shape}")
             
-            # Make prediction with model - disable constraints to see raw predictions
+            # Make prediction with deterministic results (no random noise)
             with torch.no_grad():
-                prediction = model(last_sequence, apply_constraint=False).item()
+                prediction = model(last_sequence)
         
         # Convert prediction to price with better error handling
         try:

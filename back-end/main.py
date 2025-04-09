@@ -230,6 +230,49 @@ def map_symbol_to_bse(symbol):
     bse_symbol = f"{display_symbol}.BO" if not symbol.endswith(".BO") else symbol
     return bse_symbol, display_symbol
 
+# Add the monitor_update_process function
+async def monitor_update_process(process, symbol, progress_file):
+    """Monitor the update process and capture output"""
+    try:
+        stdout, stderr = await process.communicate()
+        
+        # If process failed, log the error and update progress file
+        if process.returncode != 0:
+            stderr_content = stderr.decode().strip() if stderr else "Unknown error"
+            logger.error(f"Update process for {symbol} failed: {stderr_content}")
+            
+            # Update progress file with error
+            with open(progress_file, 'w') as f:
+                json.dump({
+                    "progress": -1, 
+                    "error": f"Update failed: {stderr_content}",
+                    "update_type": "incremental"
+                }, f)
+        else:
+            logger.info(f"Update process for {symbol} completed successfully")
+            
+            # Make sure progress file shows 100% complete if process finished successfully
+            # but progress.json wasn't updated for some reason
+            try:
+                if os.path.exists(progress_file):
+                    with open(progress_file, 'r') as f:
+                        current_progress = json.load(f)
+                        if current_progress.get('progress', 0) < 100:
+                            with open(progress_file, 'w') as f_write:
+                                json.dump({"progress": 100, "update_type": "incremental"}, f_write)
+            except Exception as read_error:
+                logger.error(f"Error reading/updating final progress: {str(read_error)}")
+                
+    except Exception as e:
+        logger.error(f"Error monitoring update process: {str(e)}")
+        # Update progress file with error
+        with open(progress_file, 'w') as f:
+            json.dump({
+                "progress": -1, 
+                "error": f"Monitor error: {str(e)}",
+                "update_type": "incremental"
+            }, f)
+
 # API endpoints - define first before static routes
 @app.get('/progress')
 async def get_progress():
@@ -401,6 +444,13 @@ async def train_model(request: ModelRequest):
 @app.post('/update-model')
 async def update_model(request: ModelRequest):
     """Incrementally update an existing model with latest data"""
+    # Initialize progress file to show processing
+    progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
+    with open(progress_file, 'w') as f:
+        json.dump({"progress": 0, "update_type": "incremental"}, f)
+        f.flush()
+        os.fsync(f.fileno())  # Force write to disk
+        
     try:
         # Map the symbol to BSE symbol and get display symbol
         input_symbol = request.symbol
@@ -408,14 +458,23 @@ async def update_model(request: ModelRequest):
         
         logger.info(f"Starting incremental update for display:{display_symbol} using data:{bse_symbol}")
         
-        # Initialize progress file to show processing
-        progress_file = os.path.join(os.path.dirname(__file__), 'tft', 'progress.json')
-        with open(progress_file, 'w') as f:
-            json.dump({"progress": 0, "update_type": "incremental"}, f)
-            f.flush()
-            os.fsync(f.fileno())  # Force write to disk
+        # Check if model exists first - don't try to update non-existent models
+        model_dir = os.path.join(Config.MODEL_DIR, display_symbol)
+        model_file = os.path.join(model_dir, 'model.pth')
+        if not os.path.exists(model_file):
+            logger.error(f"Model file not found for {display_symbol}")
+            with open(progress_file, 'w') as f:
+                json.dump({
+                    "progress": -1, 
+                    "error": f"No existing model found for {display_symbol}. Please train a model first.",
+                    "update_type": "incremental"
+                }, f)
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No existing model found for {display_symbol}. Please train a model first."
+            )
         
-        # Set up the command
+        # Set up the command with more verbose output
         cmd = [
             sys.executable,
             'tft/incremental_update.py',
@@ -424,22 +483,34 @@ async def update_model(request: ModelRequest):
             '--epochs', '10'  # Use fewer epochs for incremental updates
         ]
         
-        # Execute the update process
+        # Add start date if provided in the request
+        if request.start_date:
+            logger.info(f"Adding start date parameter: {request.start_date}")
+            cmd.extend(['--start-date', request.start_date])
+        
+        # Execute the update process with process monitoring
+        logger.info(f"Starting incremental update process: {' '.join(cmd)}")
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
         
-        # Start process but don't wait
+        # Update progress file to show process started
         with open(progress_file, 'w') as f:
-            json.dump({"progress": 10, "update_type": "incremental"}, f)
-            
+            json.dump({"progress": 5, "update_type": "incremental"}, f)
+        
+        # Start a background task to monitor the process
+        asyncio.create_task(monitor_update_process(process, display_symbol, progress_file))
+        
         # Return immediately so UI can show processing
         return {"status": "update_started"}
             
     except Exception as e:
         logger.error(f"Update error: {str(e)}")
+        # Update progress file to show error
+        with open(progress_file, 'w') as f:
+            json.dump({"progress": -1, "error": str(e), "update_type": "incremental"}, f)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/predict')
